@@ -1,0 +1,473 @@
+---
+title: "Team Poster Project: Singapore Rainfall Visualisation Redesign"
+author: "Team Coral"
+format:
+  html:
+    toc: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| message: false
+library(tidyverse)
+library(lubridate)
+library(janitor)
+library(viridis)
+library(patchwork)
+library(scales)
+library(ggrepel)
+library(zoo)
+
+knitr::opts_chunk$set(
+  fig.align = "center",
+  out.width = "100%",
+  dpi = 160
+)
+```
+
+## 1 Project Overview
+
+This project redesigns a published rainfall visualisation about Singapore's rainfall patterns. The redesign uses station-level daily rainfall observations for Changi from 1980 to 2026. The purpose of this report is to document the full workflow from raw data import to cleaned data, derived summaries, and final improved visualisations.
+
+| Project Component | Redesigned Version |
+|----------------------|--------------------------------------------------|
+| Original visualisation | "Distribution of daily (left) and monthly (right) rainfall in Singapore; 1983 - 2019" (Chart 5) |
+| Redesign topic | Climatological baseline comparisons and decadal shifts in monsoon rainfall |
+| Raw data file | `MSS_Master_Daily_S24_1980_2026.csv` |
+| Main variables used | `year`, `month`, `day`, `station`, `daily_rainfall_total_mm` |
+| Improved visualisation | Seasonal monthly totals with climatology bands + daily wet-day violin distributions |
+
+### 1.1 Original Visualisation and Critique
+
+The original Chart 5 in *Visualising Singapore's Changing Weather Patterns: 1983–2019* by Chua Chin Hon was designed to show the distribution of daily (left) and monthly (right) rainfall. It plotted every daily observation and monthly total chronologically as a scatter plot over time. The $y$-axes were inverted, and points were mapped to size and color based on rainfall intensity.
+
+Our critique identifies five main weaknesses:
+
+1.  **Overplotting and Noise:** Daily rainfall is highly skewed (most days are dry). Scatterplotting 13,000+ points results in a dense block of overlapping points at $0\text{ mm}$ that obscures the actual distribution.
+2.  **Inverted Vertical Axis:** Larger rainfall amounts are plotted downwards. This is counterintuitive for readers and makes it difficult to read and compare quantities.
+3.  **Incomparable Shared Y-Axis:** The subplots share a y-axis. Daily rainfall ($0\text{--}150\text{ mm}$) has a completely different range from monthly rainfall ($0\text{--}700\text{ mm}$), causing the daily plot to be heavily compressed at the top.
+4.  **Redundant Channel Mapping:** Mapping rainfall to position, color (hue), and point size simultaneously creates visual clutter without conveying additional variables.
+5.  **No Climatological Context:** Plotting raw points chronologically fails to show the seasonal monsoon patterns or how individual years compare to historical typical ranges (the climatological normal).
+
+### 1.2 Design Brief
+
+This redesign is intended for a public climate awareness exhibition. The goal is to compare how Singapore’s monthly rainfall seasonality has shifted across decades (1989–2019) relative to the historical climatological normal.
+
+*Main revisions:*
+
+- **Climatological Reference Bands** to represent typical historical ranges (10th–90th and 25th–75th percentiles) as a baseline.
+- **Decadal Overlays** to compare specific benchmark years (1989, 1999, 2009, 2019) on a single seasonal axis.
+- **Monsoonal Highlights & Direct Annotations** to highlight the unprecedented dry spell during the 2019 Southwest Monsoon without legend lookup.
+- **Log-scale Violin & Box Plots** to display daily wet-day distributions cleanly without overplotting.
+
+------------------------------------------------------------------------
+
+## 2 Import the Rainfall Data
+
+The raw dataset is stored as a CSV file. The code below searches for the file in the project root first and then in `data/raw/` to ensure the report renders reliably.
+
+```{r}
+#| label: import-rainfall-data
+find_project_root <- function(start_dir = getwd()) {
+  current_dir <- normalizePath(start_dir, winslash = "/", mustWork = TRUE)
+
+  repeat {
+    has_source_csv <- file.exists(
+      file.path(current_dir, "MSS_Master_Daily_S24_1980_2026.csv")
+    )
+    has_git_dir <- dir.exists(file.path(current_dir, ".git"))
+
+    if (has_source_csv || has_git_dir) {
+      return(current_dir)
+    }
+
+    parent_dir <- dirname(current_dir)
+
+    if (identical(parent_dir, current_dir)) {
+      stop(
+        "Could not find the project root. Run this report from the project folder or a subfolder.",
+        call. = FALSE
+      )
+    }
+
+    current_dir <- parent_dir
+  }
+}
+
+project_root <- find_project_root()
+
+csv_candidates <- c(
+  file.path(project_root, "MSS_Master_Daily_S24_1980_2026.csv"),
+  file.path(project_root, "data", "raw", "MSS_Master_Daily_S24_1980_2026.csv")
+)
+
+csv_path <- csv_candidates[file.exists(csv_candidates)][1]
+
+if (is.na(csv_path)) {
+  stop(
+    "Could not find MSS_Master_Daily_S24_1980_2026.csv in the project root or data/raw/.",
+    call. = FALSE
+  )
+}
+
+rainfall_raw <- read_csv(
+  csv_path,
+  na = c("", "NA", "N/A", "-", "\u2014", "\u0097"),
+  show_col_types = FALSE
+)
+
+rainfall_raw
+```
+
+------------------------------------------------------------------------
+
+## 3 Clean the Rainfall Data
+
+The raw file stores date information across separate year, month, and day columns. We clean the column names, convert the date fields to integers, create a proper `date` column, parse rainfall as a numeric variable, and trim whitespace from the station name.
+
+```{r}
+#| label: clean-rainfall-data
+rainfall <- rainfall_raw |>
+  clean_names() |>
+  mutate(
+    across(c(year, month, day), as.integer),
+    date = make_date(year = year, month = month, day = day),
+    daily_rainfall_total_mm = suppressWarnings(
+      as.numeric(gsub("[^0-9.]", "", as.character(daily_rainfall_total_mm)))
+    ),
+    station = str_squish(station),
+    month_name = factor(month.abb[month], levels = month.abb)
+  ) |>
+  filter(!is.na(daily_rainfall_total_mm)) |>
+  arrange(date)
+
+head(rainfall)
+tail(rainfall)
+```
+
+### 3.1 Verify the Cleaned Data
+
+These checks confirm the observed date range, duplicate dates, missing dates, missing rainfall values, and impossible negative rainfall values.
+
+```{r}
+#| label: verify-rainfall-cleaning
+date_checks <- tibble(
+  check = c(
+    "rows",
+    "first_date",
+    "last_date",
+    "invalid_dates",
+    "duplicate_dates",
+    "missing_dates_inside_observed_range",
+    "missing_daily_rainfall_values",
+    "negative_daily_rainfall_values"
+  ),
+  value = c(
+    as.character(nrow(rainfall)),
+    as.character(min(rainfall$date, na.rm = TRUE)),
+    as.character(max(rainfall$date, na.rm = TRUE)),
+    as.character(sum(is.na(rainfall$date))),
+    as.character(sum(duplicated(rainfall$date))),
+    as.character(length(setdiff(
+      seq(
+        min(rainfall$date, na.rm = TRUE),
+        max(rainfall$date, na.rm = TRUE),
+        by = "day"
+      ),
+      rainfall$date
+    ))),
+    as.character(sum(is.na(rainfall$daily_rainfall_total_mm))),
+    as.character(sum(rainfall$daily_rainfall_total_mm < 0, na.rm = TRUE))
+  )
+)
+
+date_checks
+```
+
+```{r}
+#| label: verify-station-history
+station_history <- rainfall |>
+  group_by(station) |>
+  summarise(
+    first_date = min(date),
+    last_date = max(date),
+    n_days = n(),
+    .groups = "drop"
+  ) |>
+  arrange(first_date)
+
+station_change_dates <- rainfall |>
+  mutate(previous_station = lag(station)) |>
+  filter(!is.na(previous_station), station != previous_station) |>
+  select(date, previous_station, station)
+
+station_history
+station_change_dates
+```
+
+The station history check confirms that these are station-level observations for Changi.
+
+### 3.2 Export the Cleaned Daily Data
+
+We write the cleaned daily dataset to `data/processed/` to ensure project reproducibility.
+
+```{r}
+#| label: export-cleaned-rainfall-data
+dir.create(
+  file.path(project_root, "data", "processed"),
+  showWarnings = FALSE,
+  recursive = TRUE
+)
+
+write_csv(
+  rainfall,
+  file.path(project_root, "data", "processed", "changi_daily_cleaned.csv")
+)
+```
+
+------------------------------------------------------------------------
+
+## 4 Derive Monthly and Annual Data
+
+We aggregate the daily rainfall observations into monthly totals. To handle incomplete data, we exclude months that have fewer than 28 days of observations. We then generate a complete year-month grid and compute the historical baseline climatological percentiles ($10\text{th}$, $25\text{th}$, $50\text{th}$ (median), $75\text{th}$, and $90\text{th}$).
+
+```{r}
+#| label: derive-monthly-rainfall
+monthly_observed <- rainfall |>
+  mutate(month_start = floor_date(date, unit = "month")) |>
+  group_by(year, month, month_start) |>
+  summarise(
+    monthly_total_mm = sum(daily_rainfall_total_mm, na.rm = TRUE),
+    n_days_observed = n(),
+    n_missing_rainfall = sum(is.na(daily_rainfall_total_mm)),
+    expected_days = days_in_month(first(month_start)),
+    .groups = "drop"
+  ) |>
+  mutate(
+    month_status = case_when(
+      n_days_observed == expected_days & n_missing_rainfall == 0 ~ "complete",
+      TRUE ~ "partial"
+    )
+  )
+
+all_months <- expand_grid(
+  year = min(rainfall$year, na.rm = TRUE):max(rainfall$year, na.rm = TRUE),
+  month = 1:12
+) |>
+  mutate(
+    month_start = make_date(year, month, 1),
+    expected_days = days_in_month(month_start)
+  )
+
+monthly <- all_months |>
+  left_join(
+    monthly_observed,
+    by = c("year", "month", "month_start", "expected_days")
+  ) |>
+  mutate(
+    month_status = case_when(
+      is.na(n_days_observed) ~ "unavailable",
+      month_status == "complete" ~ "complete",
+      TRUE ~ "partial"
+    ),
+    month_name = factor(month.abb[month], levels = month.abb),
+    year_display = factor(year, levels = rev(sort(unique(year)))),
+    display_total_mm = if_else(
+      month_status == "complete",
+      monthly_total_mm,
+      NA_real_
+    )
+  )
+
+# Calculate historical baseline
+climatology <- monthly |>
+  filter(month_status == "complete") |>
+  group_by(month_name) |>
+  summarise(
+    median_val = median(monthly_total_mm, na.rm = TRUE),
+    q10 = quantile(monthly_total_mm, 0.10, na.rm = TRUE),
+    q25 = quantile(monthly_total_mm, 0.25, na.rm = TRUE),
+    q75 = quantile(monthly_total_mm, 0.75, na.rm = TRUE),
+    q90 = quantile(monthly_total_mm, 0.90, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+head(climatology)
+```
+
+------------------------------------------------------------------------
+
+## 5 Build the Redesigned Visualisations
+
+We implement two linked plots that replace the original chronological scatter plots.
+
+### 5.1 Monthly Seasonal Cycle vs. Climatology (Option A)
+
+This plot shows monthly totals mapped on a seasonal Jan–Dec cycle. Shaded background ribbons indicate the historical range, and decadal benchmark lines show how individual years deviate from the climatological norm.
+
+```{r}
+#| label: plot-seasonal-cycle
+# Filter targets (benchmark years)
+target_years <- c(1989, 1999, 2009, 2019)
+monthly_targets <- monthly |>
+  filter(year %in% target_years & month_status == "complete") |>
+  mutate(year_factor = factor(year))
+
+p_monthly <- ggplot(climatology, aes(x = month_name, group = 1)) +
+  # Climatological background ribbons
+  geom_ribbon(aes(ymin = q10, ymax = q90), fill = "#E6F0FA", alpha = 0.8) +
+  geom_ribbon(aes(ymin = q25, ymax = q75), fill = "#B3D1F2", alpha = 0.8) +
+  geom_line(aes(y = median_val), color = "#4A6FA5", linetype = "dashed", linewidth = 0.8) +
+  
+  # Highlight the dry spell window in Southwest Monsoon (Jul - Sep)
+  annotate("rect", xmin = 6.5, xmax = 9.5, ymin = 0, ymax = 750, alpha = 0.15, fill = "#FF8C00") +
+  annotate(
+    "text", x = 8, y = 620, label = "Southwest Monsoon\nDry Spell Anomaly", 
+    color = "#D2691E", size = 3, fontface = "bold", hjust = 0.5
+  ) +
+  
+  # Overlay target lines
+  geom_line(
+    data = monthly_targets,
+    aes(x = month_name, y = monthly_total_mm, color = year_factor, group = year_factor),
+    linewidth = 1.0
+  ) +
+  geom_point(
+    data = monthly_targets,
+    aes(x = month_name, y = monthly_total_mm, color = year_factor),
+    size = 1.8
+  ) +
+  
+  # Direct text annotation for the 2019 anomaly
+  geom_text(
+    data = monthly_targets |> filter(year == 2019, month == 8),
+    aes(x = month_name, y = monthly_total_mm, label = "2019: 10 mm (Record Low)"),
+    vjust = -1.2, color = "#E41A1C", size = 3, fontface = "bold"
+  ) +
+  
+  # Polish scales and theme
+  scale_color_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 750), expand = c(0, 0)) +
+  theme_minimal(base_size = 11) +
+  labs(
+    title = "Singapore Monthly Rainfall: Decadal Shift vs. Climatology",
+    subtitle = "Light blue: 10th-90th percentile; Dark blue: 25th-75th percentile; Dashed line: Historical Median (1980-2026).\nOverlay lines track end-of-decade monthly deviations.",
+    x = "Month",
+    y = "Monthly Rainfall Total (mm)",
+    color = "Benchmark Year"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 12),
+    plot.subtitle = element_text(size = 9, color = "grey35"),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+
+p_monthly
+```
+
+### 5.2 Distribution of Daily Rainfall on Wet Days (Option B)
+
+To visualize daily distributions without overplotting, we filter to wet days ($>0.2\text{ mm}$) and use a combination of violin plots and nested box plots on a log scale.
+
+```{r}
+#| label: plot-daily-distribution
+# Filter daily wet days only (>0.2 mm)
+daily_wet_days <- rainfall |>
+  filter(daily_rainfall_total_mm > 0.2)
+
+p_daily <- ggplot(daily_wet_days, aes(x = month_name, y = daily_rainfall_total_mm, fill = month_name)) +
+  geom_violin(alpha = 0.6, color = "grey40", scale = "width") +
+  geom_boxplot(width = 0.15, fill = "white", color = "grey20", outlier.shape = NA, alpha = 0.8) +
+  scale_fill_viridis_d(option = "mako", begin = 0.2, end = 0.8, guide = "none") +
+  scale_y_log10(
+    breaks = c(0.5, 2, 10, 50, 200),
+    labels = c("0.5", "2.0", "10", "50", "200")
+  ) +
+  theme_minimal(base_size = 11) +
+  labs(
+    title = "Distribution of Daily Rainfall on Wet Days (>0.2 mm) by Month",
+    subtitle = "Log scale; boxplots show median and IQR (whiskers omitted; outliers hidden).\nDaily wet-day intensity distribution is highly consistent across seasons.",
+    x = "Month",
+    y = "Daily Rainfall Total (mm)"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 12),
+    plot.subtitle = element_text(size = 9, color = "grey35"),
+    panel.grid.minor = element_blank()
+  )
+
+p_daily
+```
+
+### 5.3 Combined Poster Figure
+
+We combine both plots side-by-side using the `patchwork` library and export the figure for use in the poster.
+
+```{r}
+#| label: visualize-combined-redesign
+#| fig-width: 14
+#| fig-height: 6
+two_view_figure <- p_monthly + p_daily +
+  plot_layout(ncol = 2) +
+  plot_annotation(
+    title = "Rainfall Patterns at Changi, Singapore: Seasonality and Daily Intensity",
+    subtitle = "Comparing seasonal monthly deviations with climatological baselines and daily wet-day intensity distributions.",
+    theme = theme(
+      plot.title = element_text(face = "bold", size = 16),
+      plot.subtitle = element_text(size = 11, colour = "grey25")
+    )
+  )
+
+two_view_figure
+```
+
+```{r}
+#| label: export-poster-figure
+dir.create(
+  file.path(project_root, "figures"),
+  showWarnings = FALSE,
+  recursive = TRUE
+)
+
+ggsave(
+  filename = file.path(project_root, "figures", "changi_rainfall_redesign_composite.png"),
+  plot = two_view_figure,
+  width = 13,
+  height = 5.5,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
+```
+
+------------------------------------------------------------------------
+
+## 6 Interpret the Visualisation
+
+One of the most striking features of the monthly seasonal plot is the behavior of the Southwest Monsoon during the benchmark year 2019. Climatologically, monthly rainfall typically bottoms out in February and March ($25\text{th--}75\text{th}$ percentile range of $60\text{--}180\text{ mm}$), followed by a moderate increase from July through September. However, in 2019, July and August experienced an unprecedented dry spell, with August total rainfall plummeting to a record low of just $10\text{ mm}$, falling far below the historical 10th percentile ($50\text{ mm}$). Conversely, the daily violin plot reveals that when precipitation *does* occur, the distribution of rain intensity (median wet-day total of $\approx 5\text{ mm}$) remains remarkably consistent across both wet and dry months, indicating that seasonal fluctuations are driven by the frequency of rain events rather than a difference in storm intensity.
+
+------------------------------------------------------------------------
+
+## 7 Poster Notes
+
+Key points to transfer to the poster:
+
+1.  **Station-Level Specificity:** The data are station-level rainfall observations for Changi, not a national average for Singapore.
+2.  **Date Range Coverage:** The observed date range is 1980-01-01 to 2026-05-31.
+3.  **Southwest Monsoon Anomaly:** In 2019, August rainfall hit a record low of $10\text{ mm}$, demonstrating extreme climatological departure.
+4.  **Rainfall Intensity vs. Frequency:** The intensity of wet days is highly consistent across the year; seasonal differences are primarily driven by the number of rain days.
+5.  **Log Scale Benefits:** The log scale on the daily plot makes it possible to visualize the full range of daily totals (from light trace rain of $0.5\text{ mm}$ to extreme downpours of over $200\text{ mm}$) in a single view.
+
+------------------------------------------------------------------------
+
+## 8 References
+
+1.  Chua Chin Hon (2019). "Visualising Singapore’s Changing Weather Patterns: 1983-2019". *Towards Data Science*. [Medium Article](https://medium.com/data-science/visualising-singapores-changing-weather-patterns-1983-2019-a78605fadbdf).
+2.  Historical Daily Weather Records. Meteorological Service Singapore (MSS). [MSS Historical Data](http://www.weather.gov.sg/climate-historical-daily/).
