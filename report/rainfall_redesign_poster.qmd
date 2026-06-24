@@ -36,7 +36,7 @@ knitr::opts_chunk$set(
 This project redesigns a published rainfall visualisation about Singapore's rainfall patterns. The redesign uses station-level daily rainfall observations for Changi from 1980 to 2026. The purpose of this report is to document the full workflow from raw data import to cleaned data, derived summaries, and final improved visualisations.
 
 | Project Component | Redesigned Version |
-|----------------------|--------------------------------------------------|
+|-----------------------|-------------------------------------------------|
 | Original visualisation | "Distribution of daily (left) and monthly (right) rainfall in Singapore; 1983 - 2019" (Chart 5) |
 | Redesign topic | Climatological baseline comparisons and decadal shifts in monsoon rainfall |
 | Raw data file | `MSS_Master_Daily_S24_1980_2026.csv` |

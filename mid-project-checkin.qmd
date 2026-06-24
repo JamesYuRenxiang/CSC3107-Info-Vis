@@ -29,10 +29,12 @@ library(zoo)
 
 ## Data Loading and Cleaning
 
-The raw Changi station file covers 1980-2026. For the main comparison dataset, this
-analysis uses 1983 onward. This matches the starting year of the reference Medium
+We scraped the online database for data from Changi station that covers 1980-2026. 
+For the main comparison dataset, this analysis uses 1983 onward. 
+This matches the starting year of the reference Medium
 visualisation, while still extending the time period beyond the original 1983-2019
-range using the newer records available up to 2026.
+range using the newer records available up to 2026, 
+and also 1980 to 1982 has many blank data which we removed.
 
 The 1980-1982 records are not deleted from the raw source file. Instead, they are
 cleaned first, checked for missingness, and then excluded from the main analysis
@@ -175,9 +177,7 @@ print(field_missingness)
 ```
 
 ## Data Aggregation
-
-We will aggregate the daily data into monthly and yearly summaries. These summaries are useful for understanding the data at different temporal granularities and for later analysis.
-
+We will aggregate the daily data into monthly and yearly summaries so that we can understand the data at different resolutions
 ```{r}
 #| label: aggregate-data
 
@@ -265,7 +265,16 @@ write.csv(annual, file.path("data", "processed", "changi_annual_rainfall.csv"), 
 
 ## Design Brief Draft
 
-(TODO: Add your 50-125 word design brief here.)
+This project redesigns Chart 5 from *Visualising Singapore's Changing Weather
+Patterns (1983-2019)*, which compares daily and monthly rainfall in Singapore.
+The original chart is visually memorable because it uses falling rain-like
+circles to highlight extreme rainfall events, but it is difficult to read due to
+overplotting, repeated encodings of rainfall amount, a reversed y-axis, and
+limited interactivity. Our redesign aims to make long-term rainfall patterns
+clearer by reducing visual clutter, improving comparison across years and
+rainfall levels, and extending the dataset from 1983 to 2026. The intended
+audience includes students, Singapore residents, planners, and policymakers
+interested in rainfall trends and extreme weather events.
 
 ---
 
