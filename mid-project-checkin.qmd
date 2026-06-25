@@ -265,6 +265,8 @@ write.csv(annual, file.path("data", "processed", "changi_annual_rainfall.csv"), 
 
 ## Design Brief Draft
 
+![Chart from Article](figures/original_rainfall.png)
+
 This project redesigns Chart 5 from *Visualising Singapore's Changing Weather
 Patterns (1983-2019)*, which compares daily and monthly rainfall in Singapore.
 The original chart is visually memorable because it uses falling rain-like
@@ -281,5 +283,13 @@ interested in rainfall trends and extreme weather events.
 ## Planned Design Direction
 
 (TODO: Add your 1-2 paragraph note on your planned design direction and any questions for the instructors here.)
+
+For the daily rainfall chart, we plan to replace the current visualisation with a stacked bar chart that groups each day into rainfall ranges: 0–50 mm, 50–100 mm, and 100–200 mm. Each range will be represented by a distinct colour, and the y-axis will show the frequency of days with rain within each range over the course of a year, with each bar totalling 365 days. The x-axis will represent each year, making it easy to compare how the distribution of rainfall intensity has shifted over time. If this approach becomes too granular, we will scale up to monthly aggregates instead
+
+For the monthly rainfall chart, each bar will represent a full year on the x-axis broken down into 12 segments one per month arranged from January to December and colour-coded accordingly. The y-axis will show total rainfall, allowing readers to see not just annual totals but also how rainfall is spread across months within each year. This makes it straightforward to identify seasonal patterns and track how individual months trend over the full 1983–2026 period.
+
+---
+
+## Questions
 
 ---
