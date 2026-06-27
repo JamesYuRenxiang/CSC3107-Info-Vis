@@ -71,7 +71,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="mid-project-checkin_files/libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="mid-project-checkin_files/libs/bootstrap/bootstrap.min.js"></script>
 <link href="mid-project-checkin_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="mid-project-checkin_files/libs/bootstrap/bootstrap-3c30f2379106c1cbaccb48288c37cb41.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="mid-project-checkin_files/libs/bootstrap/bootstrap-efbb37e9afcc02144ebbc7afd12a776f.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 
 
 </head>
@@ -121,7 +121,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="data-loading-and-cleaning" class="level2">
 <h2 class="anchored" data-anchor-id="data-loading-and-cleaning">Data Loading and Cleaning</h2>
-<p>The raw Changi station file covers 1980-2026. For the main comparison dataset, this analysis uses 1983 onward. This matches the starting year of the reference Medium visualisation, while still extending the time period beyond the original 1983-2019 range using the newer records available up to 2026.</p>
+<p>We scraped the online database for data from Changi station that covers 1980-2026. For the main comparison dataset, this analysis uses 1983 onward. This matches the starting year of the reference Medium visualisation, while still extending the time period beyond the original 1983-2019 range using the newer records available up to 2026, and also 1980 to 1982 has many blank data which we removed.</p>
 <p>The 1980-1982 records are not deleted from the raw source file. Instead, they are cleaned first, checked for missingness, and then excluded from the main analysis dataset. This makes the cleaning decision reproducible in R rather than relying on manual spreadsheet edits.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create directories for processed data and figures</span></span>
@@ -298,7 +298,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="data-aggregation" class="level2">
 <h2 class="anchored" data-anchor-id="data-aggregation">Data Aggregation</h2>
-<p>We will aggregate the daily data into monthly and yearly summaries. These summaries are useful for understanding the data at different temporal granularities and for later analysis.</p>
+<p>We will aggregate the daily data into monthly and yearly summaries so that we can understand the data at different resolutions</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>monthly_observed <span class="ot">&lt;-</span> rainfall <span class="sc">|&gt;</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">month_start =</span> <span class="fu">floor_date</span>(date, <span class="at">unit =</span> <span class="st">"month"</span>)) <span class="sc">|&gt;</span></span>
@@ -409,12 +409,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="design-brief-draft" class="level2">
 <h2 class="anchored" data-anchor-id="design-brief-draft">Design Brief Draft</h2>
-<p>(TODO: Add your 50-125 word design brief here.)</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="figures/original_rainfall.png" class="img-fluid figure-img"></p>
+<figcaption>Chart from Article</figcaption>
+</figure>
+</div>
+<p>This project redesigns Chart 5 from <em>Visualising Singapore’s Changing Weather Patterns (1983-2019)</em>, which compares daily and monthly rainfall in Singapore. The original chart is visually memorable because it uses falling rain-like circles to highlight extreme rainfall events, but it is difficult to read due to overplotting, repeated encodings of rainfall amount, a reversed y-axis, and limited interactivity. Our redesign aims to make long-term rainfall patterns clearer by reducing visual clutter, improving comparison across years and rainfall levels, and extending the dataset from 1983 to 2026. The intended audience includes students, Singapore residents, planners, and policymakers interested in rainfall trends and extreme weather events.</p>
 <hr>
 </section>
 <section id="planned-design-direction" class="level2">
 <h2 class="anchored" data-anchor-id="planned-design-direction">Planned Design Direction</h2>
-<p>(TODO: Add your 1-2 paragraph note on your planned design direction and any questions for the instructors here.)</p>
+<p>For the daily rainfall chart, we plan to replace the current visualisation with a stacked bar chart that groups each day into rainfall ranges: 0–50 mm, 50–100 mm, and 100–200 mm. Each range will be represented by a distinct colour, and the y-axis will show the frequency of days with rain within each range over the course of a year, with each bar totalling 365 days. The x-axis will represent each year, making it easy to compare how the distribution of rainfall intensity has shifted over time. If this approach becomes too granular, we will scale up to monthly aggregates instead.</p>
+<p>For the monthly rainfall chart, each bar will represent a full year on the x-axis broken down into 12 segments one per month arranged from January to December and colour-coded accordingly. The y-axis will show total rainfall, allowing readers to see not just annual totals but also how rainfall is spread across months within each year.</p>
+<p>Another idea we would try is a heatmap, if the idea is to integrate monthly and daily chart in one. We would use a heatmap by grouping daily rainfall into a range and color coding it. The right metric instead of temperature would be replaced with color coded rainfall ranges.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="figures/heatmapExample.jpg" class="img-fluid figure-img"></p>
+<figcaption>Heatmap Example</figcaption>
+</figure>
+</div>
+<hr>
+</section>
+<section id="questions" class="level2">
+<h2 class="anchored" data-anchor-id="questions">Questions</h2>
+<ul>
+<li><p>Have we simplified or summarized the data to an appropriate extent?</p></li>
+<li><p>Does aggregating daily rainfall into ranges strike a good balance between readability and retaining meaningful information?</p></li>
+<li><p>Does our proposed redesign preserve the original visualization’s main purpose, or does it deviate too much from it?</p></li>
+</ul>
 <hr>
 </section>
 

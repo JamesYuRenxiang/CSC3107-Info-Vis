@@ -29,11 +29,7 @@ library(zoo)
 
 ## Data Loading and Cleaning
 
-We scraped the online database for data from Changi station that covers 1980-2026. 
-For the main comparison dataset, this analysis uses 1983 onward. 
-This matches the starting year of the reference Medium
-visualisation, while still extending the time period beyond the original 1983-2019
-range using the newer records available up to 2026, 
+We scraped the online database for data from Changi station that covers 1980-2026.  For the main comparison dataset, this analysis uses 1983 onward.  This matches the starting year of the reference Medium visualisation, while still extending the time period beyond the original 1983-2019 range using the newer records available up to 2026, 
 and also 1980 to 1982 has many blank data which we removed.
 
 The 1980-1982 records are not deleted from the raw source file. Instead, they are
@@ -267,29 +263,28 @@ write.csv(annual, file.path("data", "processed", "changi_annual_rainfall.csv"), 
 
 ![Chart from Article](figures/original_rainfall.png)
 
-This project redesigns Chart 5 from *Visualising Singapore's Changing Weather
-Patterns (1983-2019)*, which compares daily and monthly rainfall in Singapore.
-The original chart is visually memorable because it uses falling rain-like
-circles to highlight extreme rainfall events, but it is difficult to read due to
-overplotting, repeated encodings of rainfall amount, a reversed y-axis, and
-limited interactivity. Our redesign aims to make long-term rainfall patterns
-clearer by reducing visual clutter, improving comparison across years and
-rainfall levels, and extending the dataset from 1983 to 2026. The intended
-audience includes students, Singapore residents, planners, and policymakers
-interested in rainfall trends and extreme weather events.
+This project redesigns Chart 5 from *Visualising Singapore's Changing Weather Patterns (1983-2019)*, which compares daily and monthly rainfall in Singapore. The original chart is visually memorable because it uses falling rain-like circles to highlight extreme rainfall events, but it is difficult to read due to overplotting, repeated encodings of rainfall amount, a reversed y-axis, and limited interactivity. Our redesign aims to make long-term rainfall patterns clearer by reducing visual clutter, improving comparison across years and rainfall levels, and extending the dataset from 1983 to 2026. The intended audience includes students, Singapore residents, planners, and policymakers interested in rainfall trends and extreme weather events.
 
 ---
 
 ## Planned Design Direction
 
-(TODO: Add your 1-2 paragraph note on your planned design direction and any questions for the instructors here.)
+For the daily rainfall chart, we plan to replace the current visualisation with a stacked bar chart that groups each day into rainfall ranges: 0–50 mm, 50–100 mm, and 100–200 mm. Each range will be represented by a distinct colour, and the y-axis will show the frequency of days with rain within each range over the course of a year, with each bar totalling 365 days. The x-axis will represent each year, making it easy to compare how the distribution of rainfall intensity has shifted over time. If this approach becomes too granular, we will scale up to monthly aggregates instead.
 
-For the daily rainfall chart, we plan to replace the current visualisation with a stacked bar chart that groups each day into rainfall ranges: 0–50 mm, 50–100 mm, and 100–200 mm. Each range will be represented by a distinct colour, and the y-axis will show the frequency of days with rain within each range over the course of a year, with each bar totalling 365 days. The x-axis will represent each year, making it easy to compare how the distribution of rainfall intensity has shifted over time. If this approach becomes too granular, we will scale up to monthly aggregates instead
+For the monthly rainfall chart, each bar will represent a full year on the x-axis broken down into 12 segments one per month arranged from January to December and colour-coded accordingly. The y-axis will show total rainfall, allowing readers to see not just annual totals but also how rainfall is spread across months within each year. 
 
-For the monthly rainfall chart, each bar will represent a full year on the x-axis broken down into 12 segments one per month arranged from January to December and colour-coded accordingly. The y-axis will show total rainfall, allowing readers to see not just annual totals but also how rainfall is spread across months within each year. This makes it straightforward to identify seasonal patterns and track how individual months trend over the full 1983–2026 period.
+Another idea we would try is a heatmap, if the idea is to integrate monthly and daily chart in one. We would use a heatmap by grouping daily rainfall into a range and color coding it. The right metric instead of temperature would be replaced with color coded rainfall ranges.
+
+![Heatmap Example](figures/heatmapExample.jpg)
 
 ---
 
 ## Questions
+
+- Have we simplified or summarized the data to an appropriate extent?
+
+- Does aggregating daily rainfall into ranges strike a good balance between readability and retaining meaningful information?
+
+- Does our proposed redesign preserve the original visualization’s main purpose, or does it deviate too much from it?
 
 ---
