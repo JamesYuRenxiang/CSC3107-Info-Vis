@@ -1,0 +1,1224 @@
+---
+title: "Monthly Rainfall Across 43 Complete Years"
+subtitle: "Test view: 12 monthly lines for Changi rainfall, 1983-2025"
+format:
+  html:
+    embed-resources: true
+    toc: false
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Purpose
+
+This test visualisation uses the processed monthly rainfall file and plots one line per calendar month across 43 complete years, from 1983 to 2025. The incomplete 2026 observations are excluded because the source data only runs to 2026-05-31, so including 2026 would create a misleading partial-year comparison.
+
+The goal is to test whether a 12-line chart can improve on the original Medium chart by making month-to-month seasonality and unusual monthly rainfall years easier to compare over time.
+
+```{r}
+#| label: setup
+
+library(tidyverse)
+library(ggrepel)
+library(scales)
+library(patchwork)
+
+theme_set(theme_minimal(base_size = 12))
+```
+
+## Load Monthly Rainfall Data
+
+```{r}
+#| label: load-monthly-rainfall
+
+monthly_path <- file.path("data", "processed", "changi_monthly_rainfall.csv")
+
+if (!file.exists(monthly_path)) {
+  stop(
+    "Could not find data/processed/changi_monthly_rainfall.csv. ",
+    "Render the main cleaning workflow first."
+  )
+}
+
+monthly <- read_csv(monthly_path, show_col_types = FALSE) |>
+  mutate(
+    month_name = factor(month_name, levels = month.abb),
+    year = as.integer(year),
+    month = as.integer(month)
+  )
+
+monthly_complete_43_years <- monthly |>
+  filter(
+    year >= 1983,
+    year <= 2025,
+    month_status == "complete"
+  )
+
+monthly_summary <- monthly_complete_43_years |>
+  summarise(
+    first_year = min(year),
+    last_year = max(year),
+    n_years = n_distinct(year),
+    n_months = n_distinct(month),
+    n_rows = n(),
+    missing_monthly_totals = sum(is.na(monthly_total_mm))
+  )
+
+monthly_summary
+```
+
+## 12-Line Monthly Rainfall Test
+
+```{r}
+#| label: plot-monthly-rainfall-12-lines
+#| fig-width: 12
+#| fig-height: 7
+
+month_end_labels <- monthly_complete_43_years |>
+  group_by(month_name) |>
+  filter(year == max(year)) |>
+  ungroup()
+
+month_palette <- c(
+  Jan = "#1B4F72",
+  Feb = "#2874A6",
+  Mar = "#148F77",
+  Apr = "#1E8449",
+  May = "#7DCEA0",
+  Jun = "#B7950B",
+  Jul = "#D68910",
+  Aug = "#CA6F1E",
+  Sep = "#A04000",
+  Oct = "#884EA0",
+  Nov = "#C0392B",
+  Dec = "#641E16"
+)
+
+ggplot(
+  monthly_complete_43_years,
+  aes(
+    x = year,
+    y = monthly_total_mm,
+    color = month_name,
+    group = month_name
+  )
+) +
+  geom_line(linewidth = 0.75, alpha = 0.88) +
+  geom_point(size = 1.1, alpha = 0.7) +
+  geom_text_repel(
+    data = month_end_labels,
+    aes(label = month_name),
+    direction = "y",
+    hjust = 0,
+    nudge_x = 1.1,
+    segment.color = "grey70",
+    segment.linewidth = 0.25,
+    size = 3.4,
+    show.legend = FALSE,
+    max.overlaps = Inf
+  ) +
+  scale_color_manual(values = month_palette, drop = FALSE) +
+  scale_x_continuous(
+    breaks = seq(1985, 2025, by = 5),
+    limits = c(1983, 2028),
+    expand = expansion(mult = c(0.01, 0.02))
+  ) +
+  scale_y_continuous(
+    labels = label_number(suffix = " mm"),
+    breaks = seq(0, 800, by = 100),
+    limits = c(0, 800),
+    expand = expansion(mult = c(0, 0.03))
+  ) +
+  labs(
+    title = "Monthly Rainfall at Changi by Calendar Month",
+    subtitle = "Each line tracks one month across 43 complete years, 1983-2025. 2026 is excluded because it is incomplete.",
+    x = "Year",
+    y = "Monthly rainfall total",
+    color = "Month",
+    caption = "Data: Meteorological Service Singapore daily observations, aggregated to monthly totals for Changi station."
+  ) +
+  guides(
+    color = guide_legend(nrow = 1, byrow = TRUE)
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    plot.subtitle = element_text(color = "grey30"),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    plot.margin = margin(10, 40, 10, 10)
+  ) +
+  coord_cartesian(clip = "off")
+```
+
+## Stacked Area Alternative
+
+This version uses the same monthly rainfall totals, but stacks the 12 months vertically for each year. It removes line overlap and makes the annual rainfall total visible as the top boundary of the stacked area. The trade-off is that individual months no longer share the same baseline, so it is less precise for comparing one month across years than the line chart or small multiples.
+
+```{r}
+#| label: plot-monthly-rainfall-stacked-area
+#| fig-width: 12
+#| fig-height: 7
+
+ggplot(
+  monthly_complete_43_years,
+  aes(
+    x = year,
+    y = monthly_total_mm,
+    fill = month_name,
+    group = month_name
+  )
+) +
+  geom_area(
+    color = "white",
+    linewidth = 0.18,
+    alpha = 0.92,
+    position = "stack"
+  ) +
+  scale_fill_manual(values = month_palette, drop = FALSE) +
+  scale_x_continuous(
+    breaks = seq(1985, 2025, by = 5),
+    limits = c(1983, 2025),
+    expand = expansion(mult = c(0.005, 0.005))
+  ) +
+  scale_y_continuous(
+    labels = label_number(suffix = " mm"),
+    breaks = seq(0, 3200, by = 400),
+    limits = c(0, 3200),
+    expand = expansion(mult = c(0, 0.03))
+  ) +
+  labs(
+    title = "Annual Rainfall Composition by Month",
+    subtitle = "Stacked monthly totals for 43 complete years, 1983-2025. The total height shows annual rainfall; colors show each month's contribution.",
+    x = "Year",
+    y = "Annual rainfall total, stacked by month",
+    fill = "Month",
+    caption = "Data: Meteorological Service Singapore daily observations, aggregated to monthly totals for Changi station."
+  ) +
+  guides(
+    fill = guide_legend(nrow = 1, byrow = TRUE)
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    plot.subtitle = element_text(color = "grey30"),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold")
+  )
+```
+
+## Monthly Rainfall Anomaly Heatmap
+
+This version keeps the original month-by-year comparison task, but removes line overlap. Each cell shows one month in one year. The color shows whether that month was wetter or drier than the historical median for the same calendar month across 1983-2025.
+
+This is different from coloring by raw rainfall total. For example, December normally has more rain than February, so raw rainfall would make December look wet almost every year. The anomaly approach asks a fairer question: was this December unusually wet compared with other Decembers, and was this February unusually dry compared with other Februaries?
+
+```{r}
+#| label: plot-monthly-rainfall-anomaly-heatmap
+#| fig-width: 13
+#| fig-height: 6.5
+
+monthly_climatology <- monthly_complete_43_years |>
+  group_by(month, month_name) |>
+  summarise(
+    median_monthly_total_mm = median(monthly_total_mm, na.rm = TRUE),
+    q10_monthly_total_mm = quantile(monthly_total_mm, 0.10, na.rm = TRUE),
+    q90_monthly_total_mm = quantile(monthly_total_mm, 0.90, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+monthly_anomalies <- monthly_complete_43_years |>
+  left_join(
+    monthly_climatology,
+    by = c("month", "month_name")
+  ) |>
+  mutate(
+    anomaly_mm = monthly_total_mm - median_monthly_total_mm,
+    anomaly_label = case_when(
+      monthly_total_mm <= q10_monthly_total_mm ~ "Very dry",
+      monthly_total_mm >= q90_monthly_total_mm ~ "Very wet",
+      TRUE ~ "Near typical"
+    ),
+    month_name = factor(month_name, levels = rev(month.abb))
+  )
+
+heatmap_annotations <- monthly_anomalies |>
+  filter(
+    (year == 2019 & month %in% c(7, 8)) |
+      (year == 2014 & month == 2) |
+      (year == 2006 & month == 12) |
+      (year == 2021 & month == 1) |
+      (year == 2025 & month == 3)
+  ) |>
+  mutate(
+    annotation = case_when(
+      year == 2019 & month == 7 ~ "Jul 2019\n12.2 mm",
+      year == 2019 & month == 8 ~ "Aug 2019\n11.8 mm",
+      year == 2014 & month == 2 ~ "Feb 2014\n0.2 mm",
+      year == 2006 & month == 12 ~ "Dec 2006\n765.9 mm",
+      year == 2021 & month == 1 ~ "Jan 2021\n692.8 mm",
+      year == 2025 & month == 3 ~ "Mar 2025\n550.1 mm",
+      TRUE ~ NA_character_
+    ),
+    annotation_color = if_else(anomaly_mm >= 0, "white", "black")
+  )
+
+ggplot(
+  monthly_anomalies,
+  aes(
+    x = year,
+    y = month_name,
+    fill = anomaly_mm
+  )
+) +
+  geom_tile(color = "white", linewidth = 0.18) +
+  geom_text(
+    data = heatmap_annotations,
+    aes(label = annotation, color = annotation_color),
+    size = 2.5,
+    lineheight = 0.9,
+    fontface = "bold",
+    show.legend = FALSE
+  ) +
+  scale_fill_gradient2(
+    low = "#9A3412",
+    mid = "#F7F7F7",
+    high = "#1D4E89",
+    midpoint = 0,
+    limits = c(-500, 500),
+    oob = squish,
+    labels = label_number(suffix = " mm"),
+    name = "Difference from\nmonthly median"
+  ) +
+  scale_color_identity() +
+  scale_x_continuous(
+    breaks = seq(1985, 2025, by = 5),
+    expand = expansion(mult = c(0.002, 0.002))
+  ) +
+  coord_equal(ratio = 1.9) +
+  labs(
+    title = "Monthly Rainfall Anomalies at Changi",
+    subtitle = "Each cell compares a month with the 1983-2025 median for that same calendar month. Brown = drier than typical; blue = wetter than typical.",
+    x = "Year",
+    y = "Month",
+    caption = "Data: Meteorological Service Singapore daily observations, aggregated to monthly totals for Changi station. 2026 is excluded because it is incomplete."
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),
+    plot.subtitle = element_text(color = "grey30"),
+    panel.grid = element_blank(),
+    legend.position = "right",
+    legend.title = element_text(face = "bold"),
+    axis.text.x = element_text(angle = 0, vjust = 0.5)
+  )
+```
+
+## Urban Drainage Flood-Stress Chart
+
+This chart is designed for urban planners and flood-prevention stakeholders. It uses daily rainfall rather than monthly rainfall because drainage stress is more closely related to heavy rainfall events than to monthly accumulation.
+
+The chart uses 1983-2025 only. The 2026 records are excluded because they only run to 2026-05-31, so including 2026 would undercount heavy-rain days and make the annual comparison misleading.
+
+The top band shows the maximum daily rainfall recorded in each year. The bottom band shows how many days in each year crossed heavy-rainfall thresholds. This keeps severity and frequency visible in one combined chart without using a misleading dual y-axis.
+
+```{r}
+#| label: prepare-urban-drainage-flood-stress-data
+
+daily_path <- file.path("data", "processed", "changi_daily_cleaned.csv")
+
+if (!file.exists(daily_path)) {
+  stop(
+    "Could not find data/processed/changi_daily_cleaned.csv. ",
+    "Render the main cleaning workflow first."
+  )
+}
+
+daily <- read_csv(daily_path, show_col_types = FALSE) |>
+  mutate(
+    date = as.Date(date),
+    year = as.integer(year),
+    daily_rainfall_total_mm = as.numeric(daily_rainfall_total_mm)
+  )
+
+daily_complete_43_years <- daily |>
+  filter(
+    year >= 1983,
+    year <= 2025
+  )
+
+annual_flood_stress <- daily_complete_43_years |>
+  group_by(year) |>
+  summarise(
+    annual_total_mm = sum(daily_rainfall_total_mm, na.rm = TRUE),
+    max_daily_mm = max(daily_rainfall_total_mm, na.rm = TRUE),
+    wet_days = sum(daily_rainfall_total_mm > 0.2, na.rm = TRUE),
+    heavy_days_50_99 = sum(
+      daily_rainfall_total_mm >= 50 &
+        daily_rainfall_total_mm < 100,
+      na.rm = TRUE
+    ),
+    extreme_days_100_plus = sum(
+      daily_rainfall_total_mm >= 100,
+      na.rm = TRUE
+    ),
+    heavy_days_50_plus = heavy_days_50_99 + extreme_days_100_plus,
+    .groups = "drop"
+  )
+
+annual_flood_stress_checks <- annual_flood_stress |>
+  summarise(
+    first_year = min(year),
+    last_year = max(year),
+    n_years = n_distinct(year),
+    missing_max_daily = sum(is.na(max_daily_mm)),
+    max_heavy_days_year = year[which.max(heavy_days_50_plus)],
+    max_heavy_days = max(heavy_days_50_plus),
+    max_daily_year = year[which.max(max_daily_mm)],
+    max_daily_mm = max(max_daily_mm)
+  )
+
+known_value_checks <- annual_flood_stress |>
+  filter(year %in% c(2007, 2011, 2021, 2024, 2025)) |>
+  select(
+    year,
+    max_daily_mm,
+    heavy_days_50_99,
+    extreme_days_100_plus,
+    heavy_days_50_plus
+  )
+
+annual_flood_stress_checks
+known_value_checks
+```
+
+```{r}
+#| label: plot-urban-drainage-flood-stress
+#| fig-width: 13
+#| fig-height: 8
+
+heavy_day_counts <- annual_flood_stress |>
+  select(year, heavy_days_50_99, extreme_days_100_plus) |>
+  pivot_longer(
+    cols = c(heavy_days_50_99, extreme_days_100_plus),
+    names_to = "threshold",
+    values_to = "days"
+  ) |>
+  mutate(
+    threshold = recode(
+      threshold,
+      heavy_days_50_99 = "50-99.9 mm",
+      extreme_days_100_plus = ">=100 mm"
+    ),
+    threshold = factor(threshold, levels = c(">=100 mm", "50-99.9 mm"))
+  )
+
+peak_annotations <- annual_flood_stress |>
+  filter(year %in% c(2011, 2021, 2025)) |>
+  mutate(
+    label = paste0(year, ": ", max_daily_mm, " mm")
+  )
+
+frequency_annotations <- annual_flood_stress |>
+  filter(year %in% c(2007, 2024)) |>
+  mutate(
+    label = case_when(
+      year == 2007 ~ "2007: 14 heavy-rain days",
+      year == 2024 ~ "2024: 12 heavy days,\n0 extreme days",
+      TRUE ~ NA_character_
+    )
+  )
+
+x_breaks <- seq(1985, 2025, by = 5)
+x_limits <- c(1982.5, 2025.5)
+
+p_peak <- ggplot(
+  annual_flood_stress,
+  aes(x = year, y = max_daily_mm)
+) +
+  annotate(
+    "rect",
+    xmin = -Inf,
+    xmax = Inf,
+    ymin = 100,
+    ymax = Inf,
+    fill = "#E8F1FA",
+    alpha = 0.55
+  ) +
+  annotate(
+    "rect",
+    xmin = -Inf,
+    xmax = Inf,
+    ymin = 200,
+    ymax = Inf,
+    fill = "#F7D7C4",
+    alpha = 0.55
+  ) +
+  geom_hline(
+    yintercept = c(100, 200),
+    linetype = "dashed",
+    color = "grey45",
+    linewidth = 0.35
+  ) +
+  geom_line(color = "#174A7C", linewidth = 0.9) +
+  geom_point(
+    aes(fill = max_daily_mm >= 100),
+    shape = 21,
+    color = "white",
+    stroke = 0.35,
+    size = 2.8,
+    show.legend = FALSE
+  ) +
+  geom_text_repel(
+    data = peak_annotations,
+    aes(label = label),
+    size = 3.1,
+    fontface = "bold",
+    min.segment.length = 0,
+    box.padding = 0.35,
+    segment.color = "grey55",
+    max.overlaps = Inf
+  ) +
+  annotate(
+    "text",
+    x = 1983,
+    y = 105,
+    label = ">=100 mm daily rainfall",
+    hjust = 0,
+    vjust = -0.4,
+    size = 3,
+    color = "grey30"
+  ) +
+  annotate(
+    "text",
+    x = 1983,
+    y = 205,
+    label = ">=200 mm severe peak",
+    hjust = 0,
+    vjust = -0.4,
+    size = 3,
+    color = "grey30"
+  ) +
+  scale_fill_manual(values = c(`FALSE` = "#6BAED6", `TRUE` = "#174A7C")) +
+  scale_x_continuous(
+    breaks = x_breaks,
+    limits = x_limits,
+    expand = expansion(mult = c(0, 0))
+  ) +
+  scale_y_continuous(
+    labels = label_number(suffix = " mm"),
+    breaks = seq(0, 240, by = 40),
+    limits = c(0, 240),
+    expand = expansion(mult = c(0, 0.04))
+  ) +
+  labs(
+    title = "Annual Peak Daily Rainfall",
+    subtitle = "Worst single-day rainfall each year. Higher peaks indicate more severe potential drainage stress events.",
+    x = NULL,
+    y = "Maximum daily rainfall"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 13),
+    plot.subtitle = element_text(color = "grey30", size = 10),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+p_frequency <- ggplot(
+  heavy_day_counts,
+  aes(x = year, y = days, fill = threshold)
+) +
+  geom_col(width = 0.82, color = "white", linewidth = 0.18) +
+  geom_text_repel(
+    data = frequency_annotations,
+    aes(
+      x = year,
+      y = heavy_days_50_plus,
+      label = label
+    ),
+    inherit.aes = FALSE,
+    size = 3.1,
+    fontface = "bold",
+    min.segment.length = 0,
+    box.padding = 0.35,
+    segment.color = "grey55",
+    max.overlaps = Inf
+  ) +
+  scale_fill_manual(
+    values = c(
+      "50-99.9 mm" = "#6BAED6",
+      ">=100 mm" = "#C2410C"
+    ),
+    breaks = c("50-99.9 mm", ">=100 mm")
+  ) +
+  scale_x_continuous(
+    breaks = x_breaks,
+    limits = x_limits,
+    expand = expansion(mult = c(0, 0))
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 16, by = 2),
+    limits = c(0, 16),
+    expand = expansion(mult = c(0, 0.08))
+  ) +
+  labs(
+    title = "Heavy-Rain Days Per Year",
+    subtitle = "Repeated heavy-rain days show how often drainage systems may face high runoff pressure.",
+    x = "Year",
+    y = "Number of days",
+    fill = "Daily rainfall"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 13),
+    plot.subtitle = element_text(color = "grey30", size = 10),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold")
+  )
+
+urban_drainage_flood_stress_chart <- p_peak / p_frequency +
+  plot_layout(heights = c(1.25, 1)) +
+  plot_annotation(
+    title = "Flood-Stress Signals for Drainage Planning at Changi, 1983-2025",
+    subtitle = "One combined chart separates peak event severity from repeated heavy-rain frequency. This avoids relying on annual or monthly totals alone.",
+    caption = "Data: Meteorological Service Singapore daily observations, aggregated from Changi station. 2026 excluded because it is incomplete.",
+    theme = theme(
+      plot.title = element_text(face = "bold", size = 17),
+      plot.subtitle = element_text(color = "grey25", size = 11),
+      plot.caption = element_text(color = "grey35", hjust = 0)
+    )
+  )
+
+urban_drainage_flood_stress_chart
+```
+
+## Single-Panel Overlay Alternative
+
+This version forces the flood-stress design into one plotting panel. The bars still show heavy-rain day counts, while the line shows annual maximum daily rainfall.
+
+This chart uses two y-axes because the two metrics have different units. The left axis is a count of days, and the right axis is rainfall in millimetres. The right axis is created using a fixed linear conversion only so that the line and bars can be drawn in the same panel. The line height should be read against the right axis only, and the bar height should be read against the left axis only.
+
+```{r}
+#| label: plot-urban-drainage-flood-stress-overlay
+#| fig-width: 13
+#| fig-height: 6.5
+
+count_axis_max <- 16
+peak_axis_max <- 240
+peak_to_count_scale <- count_axis_max / peak_axis_max
+
+overlay_peak_annotations <- annual_flood_stress |>
+  filter(year %in% c(2011, 2021, 2025)) |>
+  mutate(
+    plot_y = max_daily_mm * peak_to_count_scale,
+    label = paste0(year, ": ", max_daily_mm, " mm")
+  )
+
+overlay_frequency_annotations <- annual_flood_stress |>
+  filter(year %in% c(2007, 2024)) |>
+  mutate(
+    label = case_when(
+      year == 2007 ~ "2007: 14 heavy-rain days",
+      year == 2024 ~ "2024: 12 heavy days,\n0 extreme days",
+      TRUE ~ NA_character_
+    )
+  )
+
+ggplot() +
+  annotate(
+    "rect",
+    xmin = -Inf,
+    xmax = Inf,
+    ymin = 100 * peak_to_count_scale,
+    ymax = 200 * peak_to_count_scale,
+    fill = "#E8F1FA",
+    alpha = 0.45
+  ) +
+  annotate(
+    "rect",
+    xmin = -Inf,
+    xmax = Inf,
+    ymin = 200 * peak_to_count_scale,
+    ymax = Inf,
+    fill = "#F7D7C4",
+    alpha = 0.45
+  ) +
+  geom_col(
+    data = heavy_day_counts,
+    aes(x = year, y = days, fill = threshold),
+    width = 0.82,
+    color = "white",
+    linewidth = 0.18,
+    alpha = 0.78
+  ) +
+  geom_line(
+    data = annual_flood_stress,
+    aes(
+      x = year,
+      y = max_daily_mm * peak_to_count_scale,
+      color = "Annual maximum daily rainfall"
+    ),
+    linewidth = 1.05
+  ) +
+  geom_point(
+    data = annual_flood_stress,
+    aes(
+      x = year,
+      y = max_daily_mm * peak_to_count_scale,
+      color = "Annual maximum daily rainfall"
+    ),
+    size = 2.5
+  ) +
+  geom_hline(
+    yintercept = c(100, 200) * peak_to_count_scale,
+    linetype = "dashed",
+    color = "#174A7C",
+    linewidth = 0.35,
+    alpha = 0.65
+  ) +
+  geom_text_repel(
+    data = overlay_peak_annotations,
+    aes(x = year, y = plot_y, label = label),
+    color = "#174A7C",
+    size = 3.1,
+    fontface = "bold",
+    min.segment.length = 0,
+    box.padding = 0.35,
+    segment.color = "grey55",
+    max.overlaps = Inf
+  ) +
+  geom_text_repel(
+    data = overlay_frequency_annotations,
+    aes(
+      x = year,
+      y = heavy_days_50_plus,
+      label = label
+    ),
+    color = "grey15",
+    size = 3.1,
+    fontface = "bold",
+    min.segment.length = 0,
+    box.padding = 0.35,
+    segment.color = "grey55",
+    max.overlaps = Inf
+  ) +
+  annotate(
+    "text",
+    x = 1983,
+    y = 100 * peak_to_count_scale,
+    label = "100 mm peak threshold",
+    hjust = 0,
+    vjust = -0.45,
+    size = 3,
+    color = "#174A7C"
+  ) +
+  annotate(
+    "text",
+    x = 1983,
+    y = 200 * peak_to_count_scale,
+    label = "200 mm severe peak",
+    hjust = 0,
+    vjust = -0.45,
+    size = 3,
+    color = "#174A7C"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "50-99.9 mm" = "#6BAED6",
+      ">=100 mm" = "#C2410C"
+    ),
+    breaks = c("50-99.9 mm", ">=100 mm")
+  ) +
+  scale_color_manual(
+    values = c("Annual maximum daily rainfall" = "#174A7C")
+  ) +
+  scale_x_continuous(
+    breaks = x_breaks,
+    limits = x_limits,
+    expand = expansion(mult = c(0, 0))
+  ) +
+  scale_y_continuous(
+    name = "Heavy-rain days per year",
+    breaks = seq(0, count_axis_max, by = 2),
+    limits = c(0, count_axis_max),
+    expand = expansion(mult = c(0, 0.08)),
+    sec.axis = sec_axis(
+      ~ . / peak_to_count_scale,
+      name = "Maximum daily rainfall",
+      breaks = seq(0, peak_axis_max, by = 40),
+      labels = label_number(suffix = " mm")
+    )
+  ) +
+  labs(
+    title = "Flood-Stress Signals for Drainage Planning at Changi, 1983-2025",
+    subtitle = "Bars show repeated heavy-rain days; the line shows the worst daily rainfall in each year. Read bars on the left axis and the line on the right axis.",
+    x = "Year",
+    fill = "Heavy-rain days",
+    color = NULL,
+    caption = "Data: Meteorological Service Singapore daily observations, aggregated from Changi station. 2026 excluded because it is incomplete."
+  ) +
+  guides(
+    fill = guide_legend(order = 1),
+    color = guide_legend(order = 2)
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 17),
+    plot.subtitle = element_text(color = "grey25", size = 11),
+    plot.caption = element_text(color = "grey35", hjust = 0),
+    panel.grid.minor = element_blank(),
+    axis.title.y.right = element_text(color = "#174A7C", face = "bold"),
+    axis.text.y.right = element_text(color = "#174A7C"),
+    axis.title.y.left = element_text(face = "bold"),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold")
+  )
+```
+
+## Monthly Flood-Stress Calendar
+
+This version keeps the flood-stress idea but changes the time scale from years to months. It is more intuitive for urban planners because it reads like a seasonal planning calendar: which months historically produce repeated heavy-rain days, and which months have produced the most severe single-day rainfall events?
+
+The bars show how many heavy-rain days occurred in each calendar month across the 43 complete years from 1983 to 2025. The line shows the worst daily rainfall ever recorded in that calendar month. This is still a station-level rainfall proxy rather than a full flood model, but it is more directly useful for seasonal drainage readiness than monthly rainfall totals.
+
+```{r}
+#| label: plot-monthly-flood-stress-calendar
+#| fig-width: 13
+#| fig-height: 6.8
+
+monthly_flood_stress <- daily_complete_43_years |>
+  mutate(
+    month_name = factor(month.abb[month], levels = month.abb)
+  ) |>
+  group_by(month, month_name) |>
+  summarise(
+    n_years = n_distinct(year),
+    heavy_days_50_99 = sum(
+      daily_rainfall_total_mm >= 50 &
+        daily_rainfall_total_mm < 100,
+      na.rm = TRUE
+    ),
+    extreme_days_100_plus = sum(
+      daily_rainfall_total_mm >= 100,
+      na.rm = TRUE
+    ),
+    heavy_days_50_plus = heavy_days_50_99 + extreme_days_100_plus,
+    max_daily_mm = max(daily_rainfall_total_mm, na.rm = TRUE),
+    max_daily_date = date[which.max(daily_rainfall_total_mm)],
+    .groups = "drop"
+  )
+
+monthly_flood_stress_checks <- monthly_flood_stress |>
+  summarise(
+    n_months = n_distinct(month),
+    n_years_per_month_min = min(n_years),
+    n_years_per_month_max = max(n_years),
+    highest_frequency_month = as.character(month_name[which.max(heavy_days_50_plus)]),
+    highest_frequency_days = max(heavy_days_50_plus),
+    highest_peak_month = as.character(month_name[which.max(max_daily_mm)]),
+    highest_peak_mm = max(max_daily_mm)
+  )
+
+monthly_heavy_day_counts <- monthly_flood_stress |>
+  select(month, month_name, heavy_days_50_99, extreme_days_100_plus) |>
+  pivot_longer(
+    cols = c(heavy_days_50_99, extreme_days_100_plus),
+    names_to = "threshold",
+    values_to = "days"
+  ) |>
+  mutate(
+    threshold = recode(
+      threshold,
+      heavy_days_50_99 = "50-99.9 mm",
+      extreme_days_100_plus = ">=100 mm"
+    ),
+    threshold = factor(threshold, levels = c("50-99.9 mm", ">=100 mm"))
+  )
+
+monthly_count_axis_max <- 60
+monthly_peak_axis_max <- 240
+monthly_peak_to_count_scale <- monthly_count_axis_max / monthly_peak_axis_max
+
+monthly_peak_annotations <- monthly_flood_stress |>
+  filter(month_name %in% c("Jan", "Mar")) |>
+  mutate(
+    plot_y = max_daily_mm * monthly_peak_to_count_scale,
+    label = paste0(month_name, " peak: ", max_daily_mm, " mm")
+  )
+
+monthly_flood_stress_checks
+monthly_flood_stress |>
+  select(
+    month_name,
+    heavy_days_50_99,
+    extreme_days_100_plus,
+    heavy_days_50_plus,
+    max_daily_mm,
+    max_daily_date
+  )
+
+ggplot() +
+  annotate(
+    "rect",
+    xmin = 0.5,
+    xmax = 1.5,
+    ymin = -Inf,
+    ymax = Inf,
+    fill = "#E8F1FA",
+    alpha = 0.55
+  ) +
+  annotate(
+    "rect",
+    xmin = 10.5,
+    xmax = 12.5,
+    ymin = -Inf,
+    ymax = Inf,
+    fill = "#E8F1FA",
+    alpha = 0.55
+  ) +
+  geom_col(
+    data = monthly_heavy_day_counts,
+    aes(x = month, y = days, fill = threshold),
+    width = 0.72,
+    color = "white",
+    linewidth = 0.25,
+    alpha = 0.9
+  ) +
+  geom_line(
+    data = monthly_flood_stress,
+    aes(
+      x = month,
+      y = max_daily_mm * monthly_peak_to_count_scale,
+      color = "Worst daily rainfall in month"
+    ),
+    linewidth = 1.05
+  ) +
+  geom_point(
+    data = monthly_flood_stress,
+    aes(
+      x = month,
+      y = max_daily_mm * monthly_peak_to_count_scale,
+      color = "Worst daily rainfall in month"
+    ),
+    size = 3
+  ) +
+  geom_hline(
+    yintercept = c(100, 200) * monthly_peak_to_count_scale,
+    linetype = "dashed",
+    color = "#174A7C",
+    linewidth = 0.35,
+    alpha = 0.65
+  ) +
+  geom_text_repel(
+    data = monthly_peak_annotations,
+    aes(x = month, y = plot_y, label = label),
+    color = "#174A7C",
+    size = 3.1,
+    fontface = "bold",
+    nudge_y = 4,
+    min.segment.length = 0,
+    box.padding = 0.35,
+    segment.color = "grey55",
+    max.overlaps = Inf
+  ) +
+  annotate(
+    "text",
+    x = 11.5,
+    y = 58,
+    label = "Nov-Jan: highest repeated\nheavy-rain stress",
+    hjust = 0.5,
+    vjust = 1,
+    size = 3.3,
+    fontface = "bold",
+    color = "grey15"
+  ) +
+  annotate(
+    "text",
+    x = 1,
+    y = 100 * monthly_peak_to_count_scale,
+    label = "100 mm peak threshold",
+    hjust = 0,
+    vjust = -0.45,
+    size = 3,
+    color = "#174A7C"
+  ) +
+  annotate(
+    "text",
+    x = 1,
+    y = 200 * monthly_peak_to_count_scale,
+    label = "200 mm severe peak",
+    hjust = 0,
+    vjust = -0.45,
+    size = 3,
+    color = "#174A7C"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "50-99.9 mm" = "#6BAED6",
+      ">=100 mm" = "#C2410C"
+    ),
+    breaks = c("50-99.9 mm", ">=100 mm")
+  ) +
+  scale_color_manual(
+    values = c("Worst daily rainfall in month" = "#174A7C")
+  ) +
+  scale_x_continuous(
+    breaks = 1:12,
+    labels = month.abb,
+    limits = c(0.5, 12.5),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  scale_y_continuous(
+    name = "Heavy-rain days over 43 years",
+    breaks = seq(0, monthly_count_axis_max, by = 10),
+    limits = c(0, monthly_count_axis_max),
+    expand = expansion(mult = c(0, 0.08)),
+    sec.axis = sec_axis(
+      ~ . / monthly_peak_to_count_scale,
+      name = "Worst daily rainfall in month",
+      breaks = seq(0, monthly_peak_axis_max, by = 40),
+      labels = label_number(suffix = " mm")
+    )
+  ) +
+  labs(
+    title = "Monthly Flood-Stress Calendar for Drainage Planning at Changi, 1983-2025",
+    subtitle = "Bars = heavy-rain days over 43 complete years; line = worst daily rainfall ever observed in that month.\nRead bars on the left axis and the line on the right axis.",
+    x = "Month",
+    fill = "Heavy-rain days",
+    color = NULL,
+    caption = "Data: Meteorological Service Singapore daily observations, aggregated from Changi station. Counts use 43 complete years; 2026 excluded because it is incomplete."
+  ) +
+  guides(
+    fill = guide_legend(order = 1),
+    color = guide_legend(order = 2)
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 17),
+    plot.subtitle = element_text(color = "grey25", size = 11),
+    plot.caption = element_text(color = "grey35", hjust = 0),
+    panel.grid.minor = element_blank(),
+    axis.title.y.right = element_text(color = "#174A7C", face = "bold"),
+    axis.text.y.right = element_text(color = "#174A7C"),
+    axis.title.y.left = element_text(face = "bold"),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold")
+  )
+```
+
+## Year-Month Flood-Stress Matrix (Main Redesign)
+
+This is the primary redesign chart for urban planners and flood-prevention stakeholders. Each column is one year and each row is one calendar month. Every cell in the grid covers one month in one year across the full 1983-2025 record.
+
+The tile color encodes the number of heavy-rain days (daily rainfall ≥ 50 mm) in each month-year using a four-level discrete scale: 0 days (near-white), 1 day (light blue), 2 days (mid blue), 3 or more days (dark blue). Red circle markers appear over cells that contained at least one extreme-rain day (daily rainfall ≥ 100 mm); the size of the circle scales with the count of extreme days in that cell.
+
+This keeps two planning signals visible at once: the seasonal clustering of heavy-rain months and isolated high-severity events that do not follow the seasonal pattern.
+
+```{r}
+#| label: prepare-year-month-flood-stress-matrix
+
+year_month_flood_stress <- daily_complete_43_years |>
+  mutate(
+    month_name = factor(month.abb[month], levels = rev(month.abb))
+  ) |>
+  group_by(year, month, month_name) |>
+  summarise(
+    heavy_days_50_99 = sum(
+      daily_rainfall_total_mm >= 50 &
+        daily_rainfall_total_mm < 100,
+      na.rm = TRUE
+    ),
+    extreme_days_100_plus = sum(
+      daily_rainfall_total_mm >= 100,
+      na.rm = TRUE
+    ),
+    heavy_days_50_plus = heavy_days_50_99 + extreme_days_100_plus,
+    max_daily_mm = max(daily_rainfall_total_mm, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(
+    heavy_day_class = case_when(
+      heavy_days_50_plus == 0 ~ "0",
+      heavy_days_50_plus == 1 ~ "1",
+      heavy_days_50_plus == 2 ~ "2",
+      heavy_days_50_plus >= 3 ~ "3+",
+      TRUE ~ NA_character_
+    ),
+    heavy_day_class = factor(
+      heavy_day_class,
+      levels = c("0", "1", "2", "3+")
+    ),
+    extreme_marker_size = if_else(
+      extreme_days_100_plus > 0,
+      as.numeric(extreme_days_100_plus),
+      NA_real_
+    )
+  )
+
+year_month_matrix_checks <- year_month_flood_stress |>
+  summarise(
+    n_years      = n_distinct(year),
+    n_months     = n_distinct(month),
+    n_cells      = n(),
+    max_heavy_days_in_month_year   = max(heavy_days_50_plus),
+    max_extreme_days_in_month_year = max(extreme_days_100_plus)
+  )
+
+year_month_matrix_checks
+year_month_flood_stress |>
+  arrange(desc(heavy_days_50_plus), desc(extreme_days_100_plus), desc(max_daily_mm)) |>
+  select(
+    year,
+    month_name,
+    heavy_days_50_99,
+    extreme_days_100_plus,
+    heavy_days_50_plus,
+    max_daily_mm
+  ) |>
+  head(15)
+```
+
+```{r}
+#| label: plot-year-month-flood-stress-matrix
+#| fig-width: 16
+#| fig-height: 6
+
+# Cells to annotate: highest-stress month-years by heavy-rain days
+matrix_annotations <- year_month_flood_stress |>
+  filter(
+    (year == 2007 & month == 1) |
+      (year == 2006 & month == 12) |
+      (year == 2021 & month == 1) |
+      (year == 2011 & month == 12) |
+      (year == 1995 & month == 12)
+  ) |>
+  mutate(
+    label = paste0(
+      month_name, "\n", year, "\n",
+      heavy_days_50_plus, " heavy"
+    )
+  )
+
+ggplot(
+  year_month_flood_stress,
+  aes(x = year, y = month_name)
+) +
+  geom_tile(
+    aes(fill = heavy_day_class),
+    color = "white",
+    linewidth = 0.25
+  ) +
+  geom_point(
+    data = year_month_flood_stress |>
+      filter(extreme_days_100_plus > 0),
+    aes(size = extreme_marker_size),
+    shape = 21,
+    fill = "#C2410C",
+    color = "white",
+    stroke = 0.45,
+    alpha = 0.92
+  ) +
+  scale_fill_manual(
+    values = c(
+      "0"  = "#EEF2F7",
+      "1"  = "#AECDE3",
+      "2"  = "#4A9DC4",
+      "3+" = "#0E4D82"
+    ),
+    drop = FALSE,
+    name = "Heavy-rain days (\u226550 mm)",
+    guide = guide_legend(
+      direction = "horizontal",
+      title.position = "top",
+      label.position = "bottom",
+      keywidth  = unit(1.4, "cm"),
+      keyheight = unit(0.45, "cm")
+    )
+  ) +
+  scale_size_continuous(
+    range  = c(2.0, 5.8),
+    breaks = c(1, 2, 3),
+    limits = c(1, 3),
+    name   = "Extreme days (\u2265100 mm)",
+    guide  = guide_legend(
+      direction    = "horizontal",
+      title.position = "top",
+      label.position = "bottom",
+      override.aes = list(
+        fill   = "#C2410C",
+        color  = "white",
+        shape  = 21,
+        stroke = 0.45,
+        alpha  = 0.92
+      )
+    )
+  ) +
+  scale_x_continuous(
+    breaks = c(1983, seq(1985, 2025, by = 5)),
+    expand = expansion(mult = c(0.005, 0.005))
+  ) +
+  labs(
+    title    = "Year-Month Flood-Stress Matrix at Changi, 1983\u20132025",
+    subtitle = "Each cell is one month in one year. Darker blue = more heavy-rain days (\u226550 mm); red circles = extreme-rain days (\u2265100 mm), sized by count.",
+    x        = "Year",
+    y        = NULL,
+    caption  = paste0(
+      "Data: Meteorological Service Singapore daily observations, Changi station.\n",
+      "Heavy rain \u226550 mm/day; extreme rain \u2265100 mm/day. 2026 excluded (incomplete year)."
+    )
+  ) +
+  guides(
+    fill = guide_legend(
+      order = 1,
+      direction      = "horizontal",
+      title.position = "top",
+      label.position = "bottom",
+      keywidth  = unit(1.4, "cm"),
+      keyheight = unit(0.45, "cm")
+    ),
+    size = guide_legend(
+      order = 2,
+      direction      = "horizontal",
+      title.position = "top",
+      label.position = "bottom",
+      override.aes = list(
+        fill   = "#C2410C",
+        color  = "white",
+        shape  = 21,
+        stroke = 0.45,
+        alpha  = 0.92
+      )
+    )
+  ) +
+  theme(
+    plot.title        = element_text(face = "bold", size = 16),
+    plot.subtitle     = element_text(color = "grey25", size = 10.5),
+    plot.caption      = element_text(color = "grey40", hjust = 0, size = 8.5),
+    panel.grid        = element_blank(),
+    axis.text.x       = element_text(size = 8.5, angle = 0, vjust = 0.5),
+    axis.text.y       = element_text(size = 9.5, face = "bold"),
+    axis.title.x      = element_text(face = "bold"),
+    legend.position   = "bottom",
+    legend.title      = element_text(face = "bold", size = 9),
+    legend.text       = element_text(size = 8.5),
+    legend.box        = "horizontal",
+    legend.spacing.x  = unit(0.8, "cm"),
+    plot.margin       = margin(10, 15, 10, 10)
+  )
+```
+
+## Quick Reading
+
+**Selected main redesign: Year-Month Flood-Stress Matrix.**
+
+This chart was chosen because it preserves both planning dimensions at once: the full 43-year record and the month-by-month separation. Stakeholders can scan a single grid and answer two questions simultaneously — which months are seasonally risky, and which specific years produced unusual events?
+
+**Why the alternatives were set aside:**
+
+- **12-line monthly chart**: Overlap between 12 lines across 43 years makes month-by-month comparison unreliable for planning decisions.
+- **Stacked area**: Shows annual rainfall composition but loses individual month baselines, making cross-year comparisons within a month hard.
+- **Anomaly heatmap**: Encodes departure from median rather than flood-stress thresholds, which is harder to translate into planning thresholds.
+- **Annual flood-stress chart (two-panel)**: Useful for year-level trend review, but hides month-level timing of events.
+- **Monthly flood-stress calendar**: Intuitive seasonal summary, but collapses all 43 years into one row per month, hiding year-to-year variation.
+
+The year-month matrix avoids all of these trade-offs. It surfaces seasonal clustering (heavy-rain rows concentrated in Jan, Nov, Dec), year-specific spikes (isolated dark cells in otherwise light years), and extreme events (red circles) that do not always follow the seasonal pattern. This makes it the best fit for drainage readiness planning by urban planners who need to see when and how often flood-stress signals occur across decades.
