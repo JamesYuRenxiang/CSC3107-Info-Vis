@@ -4,12 +4,11 @@ This project supports a university Information Visualisation poster redesign of 
 
 ## Suggested Structure
 
-- `MSS_Master_Daily_S24_1980_2026.csv`: source CSV currently stored in the project root.
-- `data/raw/`: optional location for a copy of the raw CSV.
+- `data/MSS_Master_Daily_S24_1980_2026.csv`: raw source CSV used by the project.
 - `data/processed/`: cleaned daily rainfall CSV exported by the project QMD.
-- `R/01_prepare_and_plot_rainfall.R`: earlier standalone preparation and plotting workflow, kept as a reference.
 - `figures/`: poster-ready chart exports.
-- `report/rainfall_redesign_poster.qmd`: main project QMD containing the import, cleaning, transformation, checks, and visualisation pipeline.
+- `report/team_coral_final_submission.qmd`: main project QMD containing the import, cleaning, transformation, checks, and visualisation pipeline.
+- `report/team_coral_final_submission.html`: self-contained rendered project report.
 
 ## Setup
 
@@ -31,7 +30,7 @@ install.packages(c(
 Then run:
 
 ```bash
-quarto render report/rainfall_redesign_poster.qmd
+quarto render report/team_coral_final_submission.qmd
 ```
 
 The QMD reads the original CSV directly and writes the cleaned daily data to `data/processed/changi_daily_cleaned.csv`.
