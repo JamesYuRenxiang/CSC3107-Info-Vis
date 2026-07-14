@@ -302,7 +302,7 @@ monthly_threshold_summary |>
 
 This is the primary redesign chart for urban planners and flood-prevention stakeholders. Each column is one year and each row is one calendar month. Every cell in the grid covers one month in one year across the full 1983-2025 record.
 
-The tile color encodes the number of heavy-rain days (daily rainfall ≥ 50 mm) in each month-year using a four-level discrete scale: 0 days (near-white), 1 day (light blue), 2 days (mid blue), 3 or more days (dark blue). Red circle markers appear over cells that contained at least one extreme-rain day (daily rainfall ≥ 100 mm); the size of the circle scales with the count of extreme days in that cell.
+The tile color encodes the number of heavy-rain days (daily rainfall ≥ 50 mm) in each month-year using a five-level discrete scale: 0 days (near-white), 1 day (light blue), 2 days (medium blue), 3 days (dark blue), and 4 or more days (deep blue). Red circle markers appear over cells that contained at least one extreme-rain day (daily rainfall ≥ 100 mm); the size of the circle scales with the count of extreme days in that cell.
 
 This keeps two planning signals visible at once: the seasonal clustering of heavy-rain months and isolated high-severity events that do not follow the seasonal pattern.
 
@@ -343,12 +343,13 @@ year_month_flood_stress <- daily_analysis_period |>
       heavy_days_50_plus == 0 ~ "0",
       heavy_days_50_plus == 1 ~ "1",
       heavy_days_50_plus == 2 ~ "2",
-      heavy_days_50_plus >= 3 ~ "3+",
+      heavy_days_50_plus == 3 ~ "3",
+      heavy_days_50_plus >= 4 ~ "4+",
       TRUE ~ NA_character_
     ),
     heavy_day_class = factor(
       heavy_day_class,
-      levels = c("0", "1", "2", "3+")
+      levels = c("0", "1", "2", "3", "4+")
     ),
     extreme_marker_size = if_else(
       extreme_days_100_plus > 0,
@@ -382,6 +383,8 @@ year_month_flood_stress |>
   head(15)
 ```
 
+The frequency classes were selected after examining the distribution of month-year counts across all `r nrow(year_month_flood_stress)` cells. The number of days with at least 50 mm of rainfall ranged from `r min(year_month_flood_stress$heavy_days_50_plus)` to `r max(year_month_flood_stress$heavy_days_50_plus)` per month-year. Only `r sum(year_month_flood_stress$heavy_days_50_plus == 4)` cells contained four such days and `r sum(year_month_flood_stress$heavy_days_50_plus == 5)` contained five. We therefore retain exact classes from 0 to 3 and combine the sparse upper tail as 4+, balancing detail with visual readability. Extreme-rain counts ranged from zero to `r max(year_month_flood_stress$extreme_days_100_plus)` days per month-year. Zero is represented by the absence of a marker, while marker sizes 1--3 show the exact non-zero counts.
+
 ```{r}
 #| label: plot-year-month-flood-stress-matrix
 #| fig-width: 16
@@ -408,13 +411,14 @@ ggplot(
   ) +
   scale_fill_manual(
     values = c(
-      "0"  = "#EEF2F7",
-      "1"  = "#AECDE3",
-      "2"  = "#4A9DC4",
-      "3+" = "#0E4D82"
+      "0"  = "#F1F5F9",
+      "1"  = "#C6DBEF",
+      "2"  = "#6BAED6",
+      "3"  = "#3182BD",
+      "4+" = "#08519C"
     ),
     drop = FALSE,
-    name = "Heavy-rain days (\u226550 mm)",
+    name = "Days with heavy rain (\u226550 mm)",
     guide = guide_legend(
       direction = "horizontal",
       title.position = "top",
@@ -427,7 +431,7 @@ ggplot(
     range  = c(2.0, 5.8),
     breaks = c(1, 2, 3),
     limits = c(1, 3),
-    name   = "Extreme days (\u2265100 mm)",
+    name   = "Days with extreme rain (\u2265100 mm)",
     guide  = guide_legend(
       direction    = "horizontal",
       title.position = "top",
@@ -447,12 +451,12 @@ ggplot(
   ) +
   labs(
     title    = "Rainfall Distribution in Singapore, 1983-2025",
-    subtitle = "Each cell is one month in one year. Darker blue = more heavy-rain days (\u226550 mm); red circles = extreme-rain days (\u2265100 mm), sized by count.",
+    subtitle = "Each cell represents one month-year in Singapore. Days with heavy rain cluster most strongly from November to January.",
     x        = "Year",
     y        = NULL,
     caption  = paste0(
-      "Data: Meteorological Service Singapore daily observations. \n",
-      "Heavy rain >50 mm/day; extreme rain >100 mm/day. 2026 excluded (incomplete year)."
+      "Data: Meteorological Service Singapore daily observations from Changi station. \n",
+      "Days with heavy rain: \u226550 mm/day; days with extreme rain: \u2265100 mm/day. 2026 excluded (incomplete year)."
     )
   ) +
   guides(
