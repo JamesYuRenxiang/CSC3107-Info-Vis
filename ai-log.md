@@ -527,6 +527,5 @@ Here is why this threshold-based matrix is a massive improvement over standard m
 
 1. **Directly Addresses Flood-Stress:** You correctly identified that aggregate totals mask extreme events. By explicitly counting days that cross practical heavy (50mm) and extreme (100mm) thresholds, you are providing urban planners with the exact frequency data they need for drainage and infrastructure planning.
 2. **Dual-Signal Encoding:** Using the cell background color for heavy rain and an overlay marker (red circles) for extreme rain is a brilliant way to show two different severity levels at the exact same time without cluttering the grid.
-3. **Optimized Layout:** Swapping to years on the x-axis and months on the y-axis is a smart practical choice. Since you have over 40 years of data but only 12 months, placing the years horizontally fits the natural landscape orientation of a standard poster much better.
 
 This final design gives your target audience a highly actionable, easily scannable "flood-stress matrix." Excellent work!
