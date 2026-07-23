@@ -57,7 +57,7 @@ Our critique identifies five main weaknesses:
 
 ### 1.2 Design Brief
 
-Our plan for this redesign is for public climate awareness and urban drainage planning. The goal is to show when heavy-rain and extreme-rain days cluster across months and years, so readers can compare seasonal flood-stress patterns without scanning thousands of daily points.
+Our plan for this redesign is for urban planners, environmental agencies, and policymakers in Singapore. The goal is to show when heavy-rain and extreme-rain days cluster across months and years, so readers can compare seasonal flood-stress patterns without scanning thousands of daily points.
 
 *Main revisions:*
 
@@ -306,7 +306,7 @@ head(climatology)
 
 ## 5 Redesigned Visualisations
 
-This is the primary redesign chart for urban planners and flood-prevention stakeholders. Each column is one year and each row is one calendar month. Every cell in the grid covers one month in one year across the full 1983-2025 record.
+This is the primary redesign chart for urban planners, environmental agencies, and policymakers in Singapore. Each column is one year and each row is one calendar month. Every cell in the grid covers one month in one year across the full 1983-2025 record.
 
 The tile color encodes the number of heavy-rain days (daily rainfall ≥ 50 mm) in each month-year using a four-level discrete scale: 0 days (near-white), 1 day (light blue), 2 days (mid blue), 3 or more days (dark blue). Red circle markers appear over cells that contained at least one extreme-rain day (daily rainfall ≥ 100 mm); the size of the circle scales with the count of extreme days in that cell.
 
