@@ -7,6 +7,7 @@ This log documents the simulated AI interactions and prompts that supported the 
 ## Interaction 1: Formatting the Critical Analysis for the Storyboard
 
 **User Prompt:**
+
 > we just found an article for visualising singapore changing weather patterns
 >
 > we found a visualisation that we would like to improve the visualisation.
@@ -50,6 +51,7 @@ Although the chart is visually creative and attractive, some design choices redu
 ## Interaction 2: Refining the Target Audience and Task
 
 **User Prompt:**
+
 > okok now we're working on the design brief 
 > 
 > our possible target audience are students, urban planners, residents and policy makers in Singapore. we want the redesigned visualisation to help them quickly identify: 
@@ -61,6 +63,7 @@ Although the chart is visually creative and attractive, some design choices redu
 > Is this audience and task clear enough? suggest how we can make it more specific.
 
 **AI Response:** 
+
 The task is mostly clear, but the audience is too broad. Students, residents, urban planners, and policymakers may use the visualization for different reasons. It would be better to choose one main audience and treat the others as secondary. 
 
 For example: Primary audience: Singapore students and residents interested in understanding historical rainfall patterns. 
@@ -74,6 +77,7 @@ You should also clarify that the visualization shows historical rainfall at Chan
 ## Interaction 3: Robust Numeric Parsing and NA Handling
 
 **User Prompt:**
+
 > I am loading a historical daily weather CSV file for Changi station. Some columns are supposed to be numeric but contain non-numeric characters, like em-dashes (`—`), en-dashes (`–`), hyphens, or empty strings. I want to read the CSV file, handle standard and non-standard missing values, and clean these columns so they can be parsed as numbers without throwing failures. How can I do this in R?
 
 **AI Response:**
@@ -136,6 +140,7 @@ rainfall_all <- rainfall_raw |>
 ## Interaction 4: Comprehensive Data Quality Checklist
 
 **User Prompt:**
+
 > I want to perform a comprehensive data quality check on my cleaned daily rainfall dataset in R. Specifically, I'd like a summary table (`tibble`) that reports:
 > - Total number of rows
 > - Start and end dates
@@ -146,6 +151,7 @@ rainfall_all <- rainfall_raw |>
 > How can I calculate these efficiently and present them in a single summary table?
 
 **AI Response:**
+
 You can build a summary `tibble` where each row represents a specific quality check, and you compute the metrics using standard vector operations in R. To identify missing dates (gaps), you can generate a complete sequence of consecutive dates from the minimum to the maximum observed date and use `setdiff()` to find dates in that sequence that are missing from your dataset.
 
 Here is the implementation:
@@ -187,6 +193,7 @@ print(date_checks)
 ## Interaction 5: Monthly Aggregation, Completeness, and Handling Gaps
 
 **User Prompt:**
+
 > I need to aggregate daily rainfall measurements into monthly totals. However, there are two issues:
 > 1. Some months might not be present in the dataset at all. I need to make sure every month/year combination between the min and max year is represented in the output.
 > 2. For months that are present, some daily records might be missing (`NA`). I want to classify each month's status: if a month has all expected days observed and zero missing daily rainfall values, it should be marked as `"complete"`; otherwise, it's `"partial"`. If a month is missing entirely from the raw data, it should be marked as `"unavailable"`.
@@ -258,6 +265,7 @@ monthly <- all_months |>
 ## Interaction 6: Critiquing the Original Rainfall Visualisation 
 
 **User Prompt:** 
+
 > our team is redesigning a published rainfall visualisation. we discussed for a bit and here are some points we came up with 
 > 
 > we think its strengths are: 
@@ -297,6 +305,7 @@ Other weaknesses
 ## Interaction 7: Refining the Visualisation Critique 
 
 **User Prompt:** 
+
 > some of your points are useful, but somw are too general and could apply to almost any graph. focus only on problems that affect the reader’s ability to compare monthly rainfall across many years. i want it to be specific to what we're working on 
 > 
 > summarise the 3 most important strengths and 3 most important weaknesses. keep each point short and explain why it matters 
@@ -321,9 +330,10 @@ Other weaknesses
 
 ---
 
-## Interaction 8: Revising the Design Brief 
+## Interaction 8: Revisting the Design Brief 
 
 **User Prompt:** 
+
 > we got feedback the design brief should be more succinct and should focus mainly on the audience and the problem we are trying to solve 
 > 
 > im going to do another draft and lets see if its ok 
@@ -342,25 +352,81 @@ It also clearly defines the problem being solved—identifying heavy and extreme
 
 ---
 
-## Interaction 9: Rewriting the Planned Design Direction 
+## Interaction 9: Idea Evaluation & Code
 
 **User Prompt:** 
-> we are going to rewrite our planned design direction after receiving the abpve feedback
-> 
-> our original idea was a stacked bar chart with one bar for every year and 12 coloured sections representing the months. however, we realised that it is difficult to compare the same month across different years because the sections do not share a common starting point 
-> 
-> we are considering changing it to a heatmap where: 
-> the x-axis shows the 12 months 
-> the y-axis shows the years 
-> colour represents the monthly rainfall total 
+
+> we decided to go for a stacked bar chart with one bar for every year and 12 coloured sections representing the months. this would help us to visualise the rainfall pattern by firstly having the full height of the bar for the total rain in a year or season. we could also have each bar showing how much rain came from a specific month and easy to compare total changes from one year to the next.
 >
-> Our original plan was to use a stacked bar chart, with one bar for each year and 12 coloured sections representing the months. However, this makes it difficult to compare the same month across different years because most sections do not share a common starting point. We are considering using a heatmap instead. The x-axis will show the 12 months, the y-axis will show the years, and colour will represent the monthly rainfall total. This design should make it easier to compare rainfall across months and years and quickly identify heavy rain and extreme rainfall periods. This keeps the focus on the comparison problem and clearly explains why the heatmap may be more suitable. 
+> what do u think about the idea and are u able to provide the code that captures these details into a stacked bar chart visualisation
 
 **AI Response:**
 
-This revised design direction is excellent and perfectly aligns with your newly updated design brief. 
+A stacked bar chart is a logical choice for showing both the yearly total (the full height of the bar) and the monthly breakdown (the colored sections) in a single view. It will certainly help in comparing total rainfall changes from year to year. 
 
-By explicitly identifying the primary flaw in the stacked bar chart—the lack of a shared baseline for month-to-month comparison—you provide a strong, logical justification for your redesign. 
+However, keep in mind that with over 40 years of data and 12 months per year, you will be plotting over 480 individual sections. You will need a distinct color palette for the 12 months to make them distinguishable.
+
+Here is the R code using `ggplot2` to create this visualization based on your cleaned and aggregated dataset:
+
+```r
+library(ggplot2)
+library(dplyr)
+
+# 1. Aggregate the cleaned daily data into monthly totals
+monthly_rainfall <- rainfall |>
+  group_by(year, month_name) |>
+  summarise(
+    monthly_total_mm = sum(daily_rainfall_total_mm, na.rm = TRUE), 
+    .groups = "drop"
+  )
+
+# 2. Create the stacked bar chart
+ggplot(monthly_rainfall, aes(x = year, y = monthly_total_mm, fill = month_name)) +
+  geom_col() +
+  scale_fill_viridis_d(option = "turbo", name = "Month") +
+  labs(
+    title = "Annual and Monthly Rainfall in Singapore",
+    x = "Year",
+    y = "Total Rainfall (mm)"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right"
+  )
+```
+
+---
+
+## Interaction 10: Visualisation Brainstorming
+
+**User Prompt:** 
+
+> we reviewed the generated visualisation with the prof and she mentioned that it was too visually cluttered. are there any other ideas or suggestions u could provide to redesign the visualisation?
+>> [Attached Visualisation](figures/stacked_bar_chart.png)
+
+**AI Response:** 
+
+Your professor's feedback is very valid. A stacked bar chart with 12 categorical colors across more than 40 years creates a very high cognitive load. Because the monthly segments (except for the very bottom one) do not share a common starting baseline on the y-axis, it becomes extremely difficult for the human eye to accurately compare the size of a specific month across different years.
+
+To reduce visual clutter and solve the baseline comparison problem, here are a few alternative redesign ideas:
+
+1.  **Small Multiples (Faceted Line Charts):** Create 12 separate mini-charts (one for each month) showing a line graph of rainfall over the years. This removes the color clutter and allows clear trend comparison per month.
+2.  **Area Chart (Area Under the Graph):** Instead of discrete stacked bars, plot the rainfall as a continuous filled area under a curve. The filled area visually represents the *volume* of rainfall, which is a highly intuitive metaphor for water. Sharp spikes in the graph will instantly draw the eye to heavy and extreme rainfall events. If you use a faceted layout (e.g., stacking the area charts vertically by year), every single graph shares a flat zero baseline. This completely eliminates the comparison problem of the stacked bar chart while keeping the focus on flood-stress periods.
+3.  **Lollipop Chart for Yearly Totals:** If the main goal is just yearly comparison, drop the monthly breakdown entirely and use a clean lollipop chart to show only the annual totals.
+
+Given your design brief's focus on identifying heavy rain periods across both months and years simultaneously, the **area chart** is likely your strongest option to explore next.
+
+---
+
+## Interaction 11: Rewriting the Planned Design Direction 
+
+**User Prompt:**  
+
+> we are considering using a heatmap instead. The x-axis will show the 12 months, the y-axis will show the years, and colour will represent the monthly rainfall total. This design should make it easier to compare rainfall across months and years and quickly identify heavy rain and extreme rainfall periods. This keeps the focus on the comparison problem and clearly explains why the heatmap may be more suitable. 
+
+**AI Response:**
+
+This revised design direction is excellent and perfectly aligns with your newly updated design brief.
 
 The pivot to a heatmap is a highly effective choice for your target audience of urban planners and policymakers for the following reasons:
 
@@ -371,9 +437,10 @@ Your explanation is clear, succinct, and maintains a laser focus on solving the 
 
 ---
 
-## Interaction 10: Comparing the Stacked Bar Chart and Heatmap 
+## Interaction 12: Comparing the Stacked Bar Chart and Heatmap 
 
 **User Prompt:** 
+
 > wait first, 
 > 
 > compare these two options for showing monthly rainfall across more than 40 years: 
@@ -399,9 +466,10 @@ Color is less precise than position or length. While urban planners can quickly 
 
 ---
 
-## Interaction 11: Addressing the Heatmap's Precision Limitation 
+## Interaction 13: Addressing the Heatmap's Precision Limitation 
 
 **User Prompt:** 
+
 > ok so we agreed that the heatmap makes month-to-month and year-to-year patterns easier to scan. however, colour is less precise than position or length for reading exact values. 
 > 
 > should we still use the heatmap? suggest ways to reduce this weakness without placing a number inside every cell, because that would make the visualisation cluttered 
@@ -422,9 +490,10 @@ The heatmap remains suitable because it prioritises fast comparison and pattern 
 
 ---
 
-## Interaction 12: Reviewing the Heatmap Design 
+## Interaction 14: Reviewing the Heatmap Design 
 
 **User Prompt:** 
+
 > okok, so this is what we ended up on: 
 > we have decided to use a heatmap for the redesigned visualisation 
 > 
@@ -468,12 +537,13 @@ One remaining concern is that more than 40 year labels may become crowded. You c
 
 ---
 
-## Interaction 13: Reviewing the Final Heatmap Plan 
+## Interaction 15: Reviewing the Final Heatmap Plan 
 
 **User Prompt:** 
+
 > this is our final heatmap plan: 
-> - years are placed on the x-axis 
-> - months are placed on the y-axis 
+> - months are placed on the x-axis 
+> - years are placed on the y-axis 
 > - monthly rainfall total is represented using an ordered sequential colour scale 
 > - darker cells represent higher rainfall 
 > - incomplete or unavailable data are shown separately from valid rainfall values 
@@ -482,7 +552,7 @@ One remaining concern is that more than 40 year labels may become crowded. You c
 > - annotations are limited to a few important or unusual periods 
 > - the design avoids unnecessary borders, text, and decoration 
 > 
-> check whether this plan supports our target audience of students and urban planners who want to identify historical monthly and yearly rainfall patterns 
+> check whether this plan supports our target audience of urban planners who want to identify historical monthly and yearly rainfall patterns 
 > 
 > identify: 
 > what is working well 
@@ -491,10 +561,10 @@ One remaining concern is that more than 40 year labels may become crowded. You c
 
 **AI Response:** 
 
-Yes, this plan supports your target audience quite well. It matches the goal of helping students and urban planners quickly scan historical rainfall patterns without too much clutter. 
+Yes, this plan supports your target audience quite well. It matches the goal of helping urban planners quickly scan historical rainfall patterns without too much clutter. 
 
 What is working well 
-- Years on the x-axis and months on the y-axis. This makes it easy to compare the same month across different years and also scan across a single year for seasonal patterns. 
+- Months on the x-axis and years on the y-axis. This makes it easy to compare the same month across different years and also scan across a single year for seasonal patterns. 
 - Sequential colour scale. Using darker cells for higher rainfall gives a clear visual order, which helps readers quickly spot wetter and drier periods. 
 - Separate treatment for incomplete or unavailable data. This improves accuracy because readers will not confuse missing data with low rainfall. 
 - Clear title and labelled legend. These help readers understand what the chart shows and what the colours mean without extra explanation. 
@@ -508,9 +578,10 @@ Reduce label crowding on the y-axis** Since you have more than 40 years, showing
 
 ---
 
-## Interaction 14: Final Pivot to Thresholds and Matrix Layout
+## Interaction 16: Final Pivot to Thresholds and Matrix Layout
 
 **User Prompt:** 
+
 > wait, we realised a flaw in our heatmap plan. if we just use total monthly rainfall, a month with 30 days of light drizzle might look the same as a month with one massive 150mm flash flood. this doesn't help urban planners with flood-stress.
 >
 > we want to change the metric. instead of monthly totals, the cell colour will represent the count of "heavy-rain days" (>= 50mm) on a 0 to 4+ scale. we will also add red circle markers to show the count of "extreme-rain days" (>= 100mm). 
@@ -527,5 +598,6 @@ Here is why this threshold-based matrix is a massive improvement over standard m
 
 1. **Directly Addresses Flood-Stress:** You correctly identified that aggregate totals mask extreme events. By explicitly counting days that cross practical heavy (50mm) and extreme (100mm) thresholds, you are providing urban planners with the exact frequency data they need for drainage and infrastructure planning.
 2. **Dual-Signal Encoding:** Using the cell background color for heavy rain and an overlay marker (red circles) for extreme rain is a brilliant way to show two different severity levels at the exact same time without cluttering the grid.
+3. **Optimized Layout:** Swapping to years on the x-axis and months on the y-axis is a smart practical choice. Since you have over 40 years of data but only 12 months, placing the years horizontally fits the natural landscape orientation of a standard poster much better.
 
 This final design gives your target audience a highly actionable, easily scannable "flood-stress matrix." Excellent work!
