@@ -1,0 +1,49 @@
+---
+title: "Team Coral AI Usage Report"
+format:
+  typst: default
+  html:
+    toc: false
+    number-sections: false
+    colorlinks: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+**AI Tool Used: Gemini 3.1 Pro**
+
+## 1. Prompting Strategies
+
+Our team utilized a highly specific, context-driven, and multimodal prompting strategy to interact with the generative AI tool. Rather than asking open-ended programming questions, we framed our prompts around explicit goals and provided relevant contextual constraints. For example, when addressing data cleaning, we specified the exact nature of the dataset (Changi station historical daily weather CSV) and explicitly listed the troublesome characters, such as em-dashes (—) and en-dashes (–).  
+
+We also actively positioned the AI as a critical reviewer. When drafting our design brief, we presented our initial target audience and goals, explicitly asking, "Is this audience and task clear enough? suggest how we can make it more specific." This forced the model to evaluate our logic rather than just generate text. Additionally, we incorporated visual aids and real-world feedback into our prompts. When an initial visualization proved suboptimal, we shared that context directly with the AI. For instance, after our professor noted that our generated stacked bar chart was "visually cluttering," we uploaded a screenshot of the chart alongside the professor's exact critique. Providing this combination of visual evidence and qualitative context allowed the AI to understand the design flaw and suggest more effective, readable alternatives.
+
+Finally, we guided the AI by dictating the specific R packages we intended to use, such as requesting solutions utilizing `dplyr`, `tidyr`, and `lubridate`. By defining the expected output formats, we reduced AI hallucinations and minimized the need for multiple iterative corrections.  
+
+## 2. Influence on Design Decisions
+
+The AI tool significantly shaped our data processing pipeline and conceptual framework in three specific instances:
+
+*   **Refining Target Audience and Task Scope:** Initially, our design brief targeted a broad audience of students and residents for general historical observation. By asking the AI to critique our task clarity, the model highlighted a critical distinction between casual observation and decision-focused information, introducing urban planners and policymakers into the discussion. This insight fundamentally shifted our project trajectory. We ultimately pivoted to make urban planners, policymakers, and environmental agencies our primary audience. Consequently, we redesigned our visualization's core objective to highlight heavy and extreme rainfall periods across months and years, specifically to support concrete applications like drainage planning, flood-prevention discussions, and public communication.
+*   **Handling Non-Standard NA Characters:** We originally planned to handle missing values by loading the raw data and running custom mutation scripts across all columns. However, the AI suggested an upstream design change: intercepting specific Unicode characters directly via the `na.strings` parameter within the `read.csv` function. We judged this an improvement because it intercepted known artifacts at the data-ingestion stage, simplifying downstream transformations.  
+*   **Addressing Implicit Missing Data:** We needed a way to identify missing months in the time series and originally considered complex grouping logic. The AI recommended generating a definitive grid of all possible year-month combinations using `tidyr::expand_grid`, and then left-joining our observed data against this master grid. We adopted this relational-join strategy because it provided a mathematically rigorous way to expose implicitly missing dates as explicit `NA` rows, which was critical for our subsequent visualization steps.  
+
+## 3. Corrections and Rejections
+
+While the AI provided strong conceptual architectures, we had to critically refine its implementation to ensure it met our analytical goals and coding standards.
+
+*   **Rejecting Ineffective Visualizations:** In Interaction 10, after we provided feedback that our stacked bar chart was visually cluttering, the AI suggested alternative formats: faceted line charts, area under the graph, and lollipop charts. We coded these suggestions but ultimately rejected all of them. We realized they were not intuitive and failed to solve our primary target: identifying exactly when heavy and extreme rain periods occur across months and years. Rather than asking the AI for more blind generations, we conducted independent research and discovered heatmaps. We returned to the AI to correct its trajectory, pitching the heatmap as a fresh take alongside our specific ideas for the x and y axes. The AI validated this approach, and we shifted to using the tool to execute our independently researched design rather than relying on it for ideation.
+*   **Dk what to put but try best be technical stuff like code**:  
+
+## 4. Ethical and Accountable Use
+
+
+
+## 5. Tool Specification
+
+A single generative AI conversational model (**Gemini 3.1 Pro**) was utilized across all interactions documented in `ai-log.md` for R script generation, logic troubleshooting, and visualization improvements.
+
+Total word count of AI Usage Report: Currently 730 words.
+

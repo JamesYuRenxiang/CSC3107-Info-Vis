@@ -54,7 +54,7 @@ Although the chart is visually creative and attractive, some design choices redu
 
 > okok now we're working on the design brief 
 > 
-> our possible target audience are students, urban planners, residents and policy makers in Singapore. we want the redesigned visualisation to help them quickly identify: 
+> our possible target audience are students and residents in Singapore. we want the redesigned visualisation to help them quickly identify: 
 > wetter and drier months 
 > unusually wet or dry years 
 > repeating seasonal rainfall patterns 
@@ -64,11 +64,15 @@ Although the chart is visually creative and attractive, some design choices redu
 
 **AI Response:** 
 
-The task is mostly clear, but the audience is too broad. Students, residents, urban planners, and policymakers may use the visualization for different reasons. It would be better to choose one main audience and treat the others as secondary. 
+The task is mostly clear, but students and residents may use the visualization for different reasons. There are also target audience you may want to consider such as rban planners and policymakers. It would be better to choose one main audience and treat the others as secondary. 
 
 For example: Primary audience: Singapore students and residents interested in understanding historical rainfall patterns. 
 
-Main task: Compare monthly rainfall across many years to quickly identify seasonal patterns, unusually wet or dry periods, and possible changes over time. Urban planners and policymakers usually need more decision-focused information, such as flood risk, drainage planning, or infrastructure needs. Your rainfall data alone may not be enough to support those decisions directly. 
+Main task: Compare monthly rainfall across many years to quickly identify seasonal patterns, unusually wet or dry periods, and possible changes over time. 
+
+Secondary audience: Urban planners and policymakers interested in understanding historical rainfall patterns. 
+
+Secondary Task: usually need more decision-focused information, such as flood risk, drainage planning, or infrastructure needs. Your rainfall data alone may not be enough to support those decisions directly. 
 
 You should also clarify that the visualization shows historical rainfall at Changi station, rather than rainfall across all of Singapore. This prevents the audience from assuming the results represent every location in the country. 
 
