@@ -1,8 +1,7 @@
 ---
 title: "Team Coral AI Usage Report"
 format:
-  typst: default
-  html:
+  typst:
     toc: false
     number-sections: false
     colorlinks: true
