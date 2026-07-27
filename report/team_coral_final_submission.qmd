@@ -1,5 +1,5 @@
 ---
-title: "Team Poster Project: Singapore Rainfall Visualisation Redesign"
+title: "Team Poster Project: Singapore High-Rainfall Day Occurrence Visualisation Redesign"
 author: "Team Coral"
 format:
   html:
@@ -18,11 +18,6 @@ execute:
 library(tidyverse)
 library(lubridate)
 library(janitor)
-library(viridis)
-library(patchwork)
-library(scales)
-library(ggrepel)
-library(zoo)
 
 knitr::opts_chunk$set(
   fig.align = "center",
@@ -33,44 +28,58 @@ knitr::opts_chunk$set(
 
 ## 1 Project Overview
 
-This project redesigns a published rainfall visualisation about Singapore's rainfall patterns. The redesign uses station-level daily rainfall observations for Changi from 1980 to 2026.
+This project redesigns a published rainfall visualisation using historical daily rainfall observations for Singapore. The submitted raw data cover January 1980 through May 2026. The redesign retains 1983 as the starting year for comparison with the original article, extends the record through the latest complete year in the dataset, 2025, and excludes the incomplete 2026 record.
 
-| Project Component | Redesigned Version |
-|--------------------------|----------------------------------------------|
-| Original visualisation | "Distribution of daily (left) and monthly (right) rainfall in Singapore; 1983 - 2019" (Chart 5) |
-| Redesign topic | Month-by-year flood-stress patterns from heavy and extreme daily rainfall |
-| Raw data file | `MSS_Master_Daily_S24_1980_2026.csv` |
-| Main variables used | `year`, `month`, `day`, `station`, `daily_rainfall_total_mm` |
-| Improved visualisation | Year-month flood-stress matrix using daily heavy-rain and extreme-rain thresholds |
+| Item | Description |
+|---|---|
+| Original chart | Chart 5: Daily and monthly rainfall distributions in Singapore, 1983--2019 |
+| Redesign objective | Help drainage-planning teams identify months and years containing repeated high-rainfall days |
+| Analysis period | 1983--2025, using complete calendar years |
+| Data source | Meteorological Service Singapore Historical Daily Records |
+| Raw input | `MSS_Master_Daily_S24_1980_2026.csv` |
+| Variables used | Date fields and daily rainfall total; station labels are used only for metadata validation |
+| Final visualisation | Year-month matrix in which tile colour shows the monthly count of days with at least 50 mm of rainfall and orange markers show the count of days with at least 100 mm |
 
 ### 1.1 Original Visualisation and Critique
 
-The original Chart 5 in *Visualising Singapore's Changing Weather Patterns: 1983–2019* by Chua Chin Hon was designed to show the distribution of daily (left) and monthly (right) rainfall. It plotted every daily observation and monthly total chronologically as a scatter plot over time. The *y*-axes were inverted, and points were mapped to size and color based on rainfall intensity.
+The original Chart 5 in *Visualising Singapore's Changing Weather Patterns: 1983–2019* by Chua Chin Hon was designed to show the distribution of daily (left) and monthly (right) rainfall. It plotted daily observations and monthly totals chronologically in adjacent scatterplots. Each panel used its own inverted *y*-axis, while rainfall amount was also mapped to point size and colour intensity.
 
-Our critique identifies five main weaknesses:
+![Original Chart 5 showing the distribution of daily and monthly rainfall in Singapore from 1983 to 2019.](../figures/original_rainfall.png){#fig-original-rainfall fig-alt="Two adjacent chronological scatterplots show daily rainfall on the left and monthly rainfall on the right. Both vertical axes are inverted, and larger, darker blue circles represent higher rainfall amounts."}
 
-1.  **Overplotting and Noise:** Daily rainfall is highly skewed (most days are dry). Scatterplotting 13,000+ points results in a dense block of overlapping points at 0 mm that obscures the actual distribution.
-2.  **Inverted Vertical Axis:** Larger rainfall amounts are plotted downwards. This is counterintuitive for readers and makes it difficult to read and compare quantities.
-3.  **Incomparable Shared Y-Axis:** The subplots share a y-axis. Daily rainfall (0--150 mm) has a completely different range from monthly rainfall (0--700 mm), causing the daily plot to be heavily compressed at the top.
-4.  **Redundant Channel Mapping:** Mapping rainfall to position, color (hue), and point size simultaneously creates visual clutter without conveying additional variables.
-5.  **No Planning Threshold Context:** Plotting raw points chronologically does not show how often rainfall crosses practical heavy-rain or extreme-rain thresholds in each month and year.
+*Source: Chua, Chin Hon. (2019, August 11). ["Visualising Singapore's Changing Weather Patterns: 1983–2019"](https://medium.com/data-science/visualising-singapores-changing-weather-patterns-1983-2019-a78605fadbdf), Chart 5. Towards Data Science.*
+
+Notable strengths of the original visualisation include:
+
+1.  **Chronological Historical Overview:** Both panels arrange years from left to right, allowing readers to scan several decades of rainfall records within one view.
+2.  **Visibility of High-Rainfall Observations:** Larger and darker points make unusually high daily and monthly rainfall observations visually salient.
+3.  **Daily and Monthly Perspectives:** Placing daily observations beside monthly totals gives readers two levels of temporal detail.
+
+The original also uses deliberate visual features that create usability trade-offs and opportunities for improvement:
+
+1.  **Thematic but Unconventional Axis Direction:** The inverted axes make rainfall appear to fall down the page. Although this metaphor relates visually to the subject, larger quantitative values conventionally appear higher on an axis. Readers must therefore override a familiar mapping, which may increase interpretation effort.
+2.  **Overplotting and Noise:** Daily rainfall is highly skewed, and many observations have little or no rain. Plotting more than 13,000 daily observations produces a dense region of overlapping points that makes individual observations and broader seasonal patterns difficult to distinguish.
+3.  **Different Scales Complicate Comparison:** The daily and monthly panels use separate vertical scales, approximately 0--225 mm and 0--800 mm respectively. Similar vertical positions therefore do not represent comparable rainfall amounts across the two panels, so readers must inspect both axes carefully.
+4.  **Redundant Channel Mapping:** Rainfall amount is encoded through vertical position, colour intensity, and point size. This redundancy helps emphasize large observations but also increases visual complexity.
+5.  **Limited Month-by-Year Comparison:** The chronological scatterplots do not make it easy to compare the same calendar month across years or identify recurring seasonal concentrations of high-rainfall days.
 
 ### 1.2 Design Brief
 
-Our plan for this redesign is for public climate awareness and urban drainage planning. The goal is to show when heavy-rain and extreme-rain days cluster across months and years, so readers can compare seasonal flood-stress patterns without scanning thousands of daily points.
+This redesign is intended for drainage-planning teams conducting preliminary reviews of historical rainfall in Singapore. It helps them identify which months and years contained repeated high-rainfall days, so they can select periods that warrant deeper station, catchment, and flood-impact analysis. The year-month matrix supports rapid seasonal comparison: colour shows the number of days with at least 50 mm of rain, while orange circles mark the number with at least 100 mm. These project-defined cut-offs describe uncommon and very uncommon rainfall days; they are not official flood-warning or engineering thresholds.
 
 *Main revisions:*
 
 - **Year-Month Matrix Layout** to preserve both the long-term record and month-by-month seasonality in one view.
-- **Heavy-Rain Day Classes** to encode the monthly count of days with at least 50 mm of rainfall.
-- **Extreme-Rain Markers** to flag days with at least 100 mm of rainfall without hiding the heavy-rain count.
-- **Complete-Year Filtering** to use 1983--2025 and exclude the incomplete 2026 record from year-to-year comparison.
+- **Rainfall-Day Classes** to encode the monthly count of days with at least 50 mm of rainfall.
+- **High-Rainfall Markers** to flag days with at least 100 mm of rainfall without hiding the count represented by tile colour.
+- **Comparable Analysis Period** to retain the original article's 1983 starting year, extend the record through 2025, and exclude the incomplete 2026 record.
 
 ------------------------------------------------------------------------
 
 ## 2 Import the Rainfall Data
 
-The raw dataset is stored as a CSV file. The code below searches for the file in the project root first and then in `data/raw/` to ensure the report renders reliably.
+The raw CSV comes from the [Meteorological Service Singapore Historical Daily Records](https://www.weather.gov.sg/climate-historical-daily/). Each row represents one calendar-day observation and contains the station label; separate year, month, and day fields; daily rainfall total; highest 30-, 60-, and 120-minute rainfall; mean, maximum, and minimum temperature; and mean and maximum wind speed. This redesign uses the date fields, station label, and daily rainfall total. The submitted `data/MSS_Master_Daily_S24_1980_2026.csv` is the pipeline's raw input; the cleaning code reads this file and writes a separate processed file without overwriting it.
+
+The code below identifies the project root by checking the supported CSV locations, including the submitted `data/` directory, and then reads the first matching file. This avoids relying on a hidden version-control directory that would not be present in the submitted ZIP archive.
 
 ```{r}
 #| label: import-rainfall-data
@@ -78,12 +87,18 @@ find_project_root <- function(start_dir = getwd()) {
   current_dir <- normalizePath(start_dir, winslash = "/", mustWork = TRUE)
 
   repeat {
-    has_source_csv <- file.exists(
-      file.path(current_dir, "MSS_Master_Daily_S24_1980_2026.csv")
+    source_csv_candidates <- c(
+      file.path(current_dir, "MSS_Master_Daily_S24_1980_2026.csv"),
+      file.path(current_dir, "data", "MSS_Master_Daily_S24_1980_2026.csv"),
+      file.path(
+        current_dir,
+        "data",
+        "raw",
+        "MSS_Master_Daily_S24_1980_2026.csv"
+      )
     )
-    has_git_dir <- dir.exists(file.path(current_dir, ".git"))
 
-    if (has_source_csv || has_git_dir) {
+    if (any(file.exists(source_csv_candidates))) {
       return(current_dir)
     }
 
@@ -112,7 +127,10 @@ csv_path <- csv_candidates[file.exists(csv_candidates)][1]
 
 if (is.na(csv_path)) {
   stop(
-    "Could not find MSS_Master_Daily_S24_1980_2026.csv in the project root or data/raw/.",
+    paste(
+      "Could not find MSS_Master_Daily_S24_1980_2026.csv",
+      "in the project root, data/, or data/raw/."
+    ),
     call. = FALSE
   )
 }
@@ -140,12 +158,15 @@ rainfall <- rainfall_raw |>
     across(c(year, month, day), as.integer),
     date = make_date(year = year, month = month, day = day),
     daily_rainfall_total_mm = suppressWarnings(
-      as.numeric(gsub("[^0-9.]", "", as.character(daily_rainfall_total_mm)))
+      parse_double(
+        as.character(daily_rainfall_total_mm),
+        na = c("", "NA", "N/A", "-", "\u2014", "\u0097"),
+        trim_ws = TRUE
+      )
     ),
     station = str_squish(station),
     month_name = factor(month.abb[month], levels = month.abb)
   ) |>
-  filter(!is.na(daily_rainfall_total_mm)) |>
   arrange(date)
 
 head(rainfall)
@@ -212,7 +233,7 @@ station_history
 station_change_dates
 ```
 
-The station history check confirms that these are station-level observations for Changi.
+The station history check identifies one metadata-label change on 1 February 2026, after the 1983--2025 analysis period; it therefore does not affect the redesigned visualisation.
 
 ### 3.2 Export the Cleaned Daily Data
 
@@ -234,9 +255,11 @@ write_csv(
 
 ------------------------------------------------------------------------
 
-## 4 Summarise the Selected Rainfall Thresholds
+## 4 Define and Summarise the Rainfall Cut-Offs
 
-The selected redesign uses daily rainfall thresholds rather than monthly rainfall totals. We therefore restrict the analysis to the same complete 1983--2025 period used by the final matrix and summarise the number of days meeting the project's two analytical thresholds for each calendar month. This table provides a direct numerical companion to the visual patterns in Section 5.
+The redesign uses two daily rainfall cut-offs rather than monthly rainfall totals: at least 50 mm and at least 100 mm in one day. We restrict the analysis to 1983--2025, retaining the original article's starting year and excluding the incomplete 2026 record.
+
+Meteorological Service Singapore identifies 50 mm of rainfall within one hour as a criterion used for issuing heavy-rain warnings ([MSS Research Letters, Issue 2, p. 36](https://ccrs.weather.gov.sg/wp-content/uploads/2019/02/MRL_Issue_2_Dec2018_FINAL.pdf)). The historical dataset used in this project does not contain complete 60-minute rainfall measurements across the full 1983--2025 period, so that operational criterion cannot be applied consistently. We therefore use a daily total of at least 50 mm as a conservative screening cut-off. Any occurrence of 50 mm within one hour would necessarily produce a daily total of at least 50 mm, although the daily cut-off may also include rainfall accumulated over several hours. It should therefore not be interpreted as confirmation that the official hourly warning criterion was met. The official source describes 50 mm per hour as a warning issuance criterion, not a general definition of every "heavy-rain day."
 
 ```{r}
 #| label: summarise-selected-rainfall-thresholds
@@ -252,24 +275,52 @@ daily_analysis_period <- rainfall |>
     year <= 2025
   )
 
+analysis_input_missing_counts <- daily_analysis_period |>
+  summarise(
+    missing_dates = sum(is.na(date)),
+    missing_month_values = sum(is.na(month)),
+    missing_daily_rainfall_values = sum(is.na(daily_rainfall_total_mm))
+  )
+
+if (any(unlist(analysis_input_missing_counts) > 0)) {
+  stop(
+    paste(
+      "The 1983-2025 analysis period contains missing required values.",
+      "Resolve them before calculating rainfall-threshold counts."
+    ),
+    call. = FALSE
+  )
+}
+
+analysis_input_missing_counts
+
+threshold_prevalence <- daily_analysis_period |>
+  summarise(
+    total_days = sum(!is.na(daily_rainfall_total_mm)),
+    days_50_plus = sum(daily_rainfall_total_mm >= 50, na.rm = TRUE),
+    proportion_50_plus = days_50_plus / total_days,
+    days_100_plus = sum(daily_rainfall_total_mm >= 100, na.rm = TRUE),
+    proportion_100_plus = days_100_plus / total_days
+  )
+
 monthly_threshold_summary <- daily_analysis_period |>
   mutate(
     month_name = factor(month.abb[month], levels = month.abb)
   ) |>
   group_by(month, month_name) |>
   summarise(
-    heavy_days_50_plus = sum(
+    days_50_plus = sum(
       daily_rainfall_total_mm >= 50,
       na.rm = TRUE
     ),
-    extreme_days_100_plus = sum(
+    days_100_plus = sum(
       daily_rainfall_total_mm >= 100,
       na.rm = TRUE
     ),
-    years_with_heavy_rain = n_distinct(
+    years_with_50_plus = n_distinct(
       year[daily_rainfall_total_mm >= 50]
     ),
-    years_with_extreme_rain = n_distinct(
+    years_with_100_plus = n_distinct(
       year[daily_rainfall_total_mm >= 100]
     ),
     .groups = "drop"
@@ -279,10 +330,10 @@ monthly_threshold_summary <- daily_analysis_period |>
 monthly_threshold_summary |>
   select(
     month_name,
-    heavy_days_50_plus,
-    extreme_days_100_plus,
-    years_with_heavy_rain,
-    years_with_extreme_rain
+    days_50_plus,
+    days_100_plus,
+    years_with_50_plus,
+    years_with_100_plus
   ) |>
   knitr::kable(
     col.names = c(
@@ -292,22 +343,26 @@ monthly_threshold_summary |>
       "Years with >=50 mm",
       "Years with >=100 mm"
     ),
-    caption = "Calendar-month rainfall-threshold summary for Changi, 1983--2025."
+    caption = "Calendar-month rainfall-threshold summary for Singapore, 1983--2025."
   )
 ```
+
+Across the `r threshold_prevalence$total_days` daily observations in the analysis period, `r threshold_prevalence$days_50_plus` days (`r sprintf("%.2f%%", 100 * threshold_prevalence$proportion_50_plus)`) recorded at least 50 mm of rainfall and `r threshold_prevalence$days_100_plus` days (`r sprintf("%.2f%%", 100 * threshold_prevalence$proportion_100_plus)`) recorded at least 100 mm. The cut-offs therefore distinguish uncommon from very uncommon high-rainfall days while retaining interpretable month-year counts. The calendar-month summary above provides a numerical companion to the visual patterns in Section 5.
+
+The 100 mm daily cut-off remains a project-defined category used to distinguish the most uncommon daily totals. It represents approximately `r sprintf("%.2f%%", 100 * threshold_prevalence$proportion_100_plus)` of observations in the analysis period and is not an official warning or engineering threshold.
 
 ------------------------------------------------------------------------
 
 ## 5 Redesigned Visualisation
 
-This is the primary redesign chart for urban planners and flood-prevention stakeholders. Each column is one year and each row is one calendar month. Every cell in the grid covers one month in one year across the full 1983-2025 record.
+This is the primary redesign chart for drainage-planning teams conducting a preliminary historical review of rainfall in Singapore. Each column is one year and each row is one calendar month. Every cell in the grid covers one month in one year across the complete 1983--2025 analysis period.
 
-The tile color encodes the number of heavy-rain days (daily rainfall ≥ 50 mm) in each month-year using a five-level discrete scale: 0 days (near-white), 1 day (light blue), 2 days (medium blue), 3 days (dark blue), and 4 or more days (deep blue). Red circle markers appear over cells that contained at least one extreme-rain day (daily rainfall ≥ 100 mm); the size of the circle scales with the count of extreme days in that cell.
+Tile colour encodes the number of days with at least 50 mm of rainfall in each month-year using a five-level discrete scale: 0 days (near-white), 1 day (light blue), 2 days (medium blue), 3 days (dark blue), and 4 or more days (deep blue). Orange circle markers appear over cells that contained at least one day with 100 mm or more; circle size represents the number of such days in that cell.
 
-This keeps two planning signals visible at once: the seasonal clustering of heavy-rain months and isolated high-severity events that do not follow the seasonal pattern.
+The two encodings keep seasonal concentrations and uncommon high-rainfall observations visible without implying that rainfall totals directly measure flooding or drainage performance.
 
 ```{r}
-#| label: prepare-year-month-flood-stress-matrix
+#| label: prepare-year-month-heavy-rain-matrix
 
 daily_matrix_input_checks <- daily_analysis_period |>
   summarise(
@@ -319,90 +374,91 @@ daily_matrix_input_checks <- daily_analysis_period |>
     missing_daily_rainfall_values = sum(is.na(daily_rainfall_total_mm))
   )
 
-year_month_flood_stress <- daily_analysis_period |>
+year_month_heavy_rain <- daily_analysis_period |>
   mutate(
     month_name = factor(month.abb[month], levels = rev(month.abb))
   ) |>
   group_by(year, month, month_name) |>
   summarise(
-    heavy_days_50_99 = sum(
+    days_50_to_99 = sum(
       daily_rainfall_total_mm >= 50 &
         daily_rainfall_total_mm < 100,
       na.rm = TRUE
     ),
-    extreme_days_100_plus = sum(
+    days_100_plus = sum(
       daily_rainfall_total_mm >= 100,
       na.rm = TRUE
     ),
-    heavy_days_50_plus = heavy_days_50_99 + extreme_days_100_plus,
+    days_50_plus = days_50_to_99 + days_100_plus,
     max_daily_mm = max(daily_rainfall_total_mm, na.rm = TRUE),
     .groups = "drop"
   ) |>
   mutate(
-    heavy_day_class = case_when(
-      heavy_days_50_plus == 0 ~ "0",
-      heavy_days_50_plus == 1 ~ "1",
-      heavy_days_50_plus == 2 ~ "2",
-      heavy_days_50_plus == 3 ~ "3",
-      heavy_days_50_plus >= 4 ~ "4+",
+    rainfall_day_class = case_when(
+      days_50_plus == 0 ~ "0",
+      days_50_plus == 1 ~ "1",
+      days_50_plus == 2 ~ "2",
+      days_50_plus == 3 ~ "3",
+      days_50_plus >= 4 ~ "4+",
       TRUE ~ NA_character_
     ),
-    heavy_day_class = factor(
-      heavy_day_class,
+    rainfall_day_class = factor(
+      rainfall_day_class,
       levels = c("0", "1", "2", "3", "4+")
     ),
-    extreme_marker_size = if_else(
-      extreme_days_100_plus > 0,
-      as.numeric(extreme_days_100_plus),
+    high_rain_marker_size = if_else(
+      days_100_plus > 0,
+      as.numeric(days_100_plus),
       NA_real_
     )
   )
 
-year_month_matrix_checks <- year_month_flood_stress |>
+year_month_matrix_checks <- year_month_heavy_rain |>
   summarise(
     n_years      = n_distinct(year),
     n_months     = n_distinct(month),
     n_cells      = n(),
-    max_heavy_days_in_month_year   = max(heavy_days_50_plus),
-    max_extreme_days_in_month_year = max(extreme_days_100_plus),
-    missing_heavy_day_classes = sum(is.na(heavy_day_class))
+    max_days_50_plus_in_month_year  = max(days_50_plus),
+    max_days_100_plus_in_month_year = max(days_100_plus),
+    missing_rainfall_day_classes = sum(is.na(rainfall_day_class))
   )
 
 daily_matrix_input_checks
 year_month_matrix_checks
-year_month_flood_stress |>
-  arrange(desc(heavy_days_50_plus), desc(extreme_days_100_plus), desc(max_daily_mm)) |>
+year_month_heavy_rain |>
+  arrange(desc(days_50_plus), desc(days_100_plus), desc(max_daily_mm)) |>
   select(
     year,
     month_name,
-    heavy_days_50_99,
-    extreme_days_100_plus,
-    heavy_days_50_plus,
+    days_50_to_99,
+    days_100_plus,
+    days_50_plus,
     max_daily_mm
   ) |>
   head(15)
 ```
 
-The frequency classes were selected after examining the distribution of month-year counts across all `r nrow(year_month_flood_stress)` cells. The number of days with at least 50 mm of rainfall ranged from `r min(year_month_flood_stress$heavy_days_50_plus)` to `r max(year_month_flood_stress$heavy_days_50_plus)` per month-year. Only `r sum(year_month_flood_stress$heavy_days_50_plus == 4)` cells contained four such days and `r sum(year_month_flood_stress$heavy_days_50_plus == 5)` contained five. We therefore retain exact classes from 0 to 3 and combine the sparse upper tail as 4+, balancing detail with visual readability. Extreme-rain counts ranged from zero to `r max(year_month_flood_stress$extreme_days_100_plus)` days per month-year. Zero is represented by the absence of a marker, while marker sizes 1--3 show the exact non-zero counts.
+The frequency classes were selected after examining the distribution of month-year counts across all `r nrow(year_month_heavy_rain)` cells. The number of days with at least 50 mm of rainfall ranged from `r min(year_month_heavy_rain$days_50_plus)` to `r max(year_month_heavy_rain$days_50_plus)` per month-year. Only `r sum(year_month_heavy_rain$days_50_plus == 4)` cells contained four such days and `r sum(year_month_heavy_rain$days_50_plus == 5)` contained five. We therefore retain exact classes from 0 to 3 and combine the sparse upper tail as 4+, balancing detail with visual readability. Counts of days with at least 100 mm ranged from zero to `r max(year_month_heavy_rain$days_100_plus)` per month-year. Zero is represented by the absence of a marker, while marker sizes 1--3 show the exact non-zero counts.
 
 ```{r}
-#| label: plot-year-month-flood-stress-matrix
+#| label: plot-year-month-heavy-rain-matrix
 #| fig-width: 16
 #| fig-height: 6
+#| fig-alt: "A year-month matrix of Singapore rainfall from 1983 to 2025. Blue tiles show monthly counts of days with at least 50 millimetres of rain, and orange circles show counts of days with at least 100 millimetres. The strongest concentration occurs from November to January."
 
 ggplot(
-  year_month_flood_stress,
+  year_month_heavy_rain,
   aes(x = year, y = month_name)
 ) +
   geom_tile(
-    aes(fill = heavy_day_class),
+    aes(fill = rainfall_day_class),
     color = "white",
     linewidth = 0.25
   ) +
   geom_point(
-    data = year_month_flood_stress |>
-      filter(extreme_days_100_plus > 0),
-    aes(size = extreme_marker_size),
+    data = year_month_heavy_rain |>
+      filter(days_100_plus > 0),
+    aes(size = high_rain_marker_size),
     shape = 21,
     fill = "#C2410C",
     color = "white",
@@ -418,7 +474,7 @@ ggplot(
       "4+" = "#08519C"
     ),
     drop = FALSE,
-    name = "Days with heavy rain (\u226550 mm)",
+    name = "Days with rainfall (\u226550 mm)",
     guide = guide_legend(
       direction = "horizontal",
       title.position = "top",
@@ -431,7 +487,7 @@ ggplot(
     range  = c(2.0, 5.8),
     breaks = c(1, 2, 3),
     limits = c(1, 3),
-    name   = "Days with extreme rain (\u2265100 mm)",
+    name   = "Days with rainfall (\u2265100 mm)",
     guide  = guide_legend(
       direction    = "horizontal",
       title.position = "top",
@@ -450,13 +506,14 @@ ggplot(
     expand = expansion(mult = c(0.005, 0.005))
   ) +
   labs(
-    title    = "Rainfall Distribution in Singapore, 1983-2025",
-    subtitle = "Each cell represents one month-year in Singapore. Days with heavy rain cluster most strongly from November to January.",
+    title    = "High-Rainfall Days in Singapore, 1983-2025",
+    subtitle = "Each cell represents one month-year. Days with at least 50 mm of rainfall concentrate most strongly from November to January.",
     x        = "Year",
     y        = NULL,
     caption  = paste0(
-      "Data: Meteorological Service Singapore daily observations from Changi station. \n",
-      "Days with heavy rain: \u226550 mm/day; days with extreme rain: \u2265100 mm/day. 2026 excluded (incomplete year)."
+      "Data: Meteorological Service Singapore daily observations. \n",
+      "The 50 mm and 100 mm cut-offs are project-defined descriptive categories, not official flood-warning or engineering thresholds. ",
+      "The incomplete 2026 record is excluded."
     )
   ) +
   guides(
@@ -501,17 +558,18 @@ ggplot(
 
 ## 6 Interpretation
 
-**Selected main redesign: Year-Month Flood-Stress Matrix.**
+**Selected main redesign: Year-Month High-Rainfall Day Occurrence Matrix.**
 
-This chart was chosen because it preserves both planning dimensions at once: the full 43-year record and the month-by-month separation. Stakeholders can scan the poster and answer two questions at the same time — which months are seasonally risky, and what is the pattern for years that produced unusual events?
+This chart was chosen because it preserves both dimensions needed for preliminary historical screening: the full 43-year record and month-by-month separation. Drainage-planning teams can use it to identify which calendar months repeatedly contain days with at least 50 mm of rainfall and which individual month-years contain days with at least 100 mm. Those periods can then be selected for deeper station, catchment, drainage, and flood-impact analysis using additional data.
 
-Across 1983--2025, December recorded `r monthly_threshold_summary$heavy_days_50_plus[monthly_threshold_summary$month_name == "Dec"]` days at or above 50 mm, followed closely by January with `r monthly_threshold_summary$heavy_days_50_plus[monthly_threshold_summary$month_name == "Jan"]` and November with `r monthly_threshold_summary$heavy_days_50_plus[monthly_threshold_summary$month_name == "Nov"]`. January recorded the largest number of days at or above 100 mm (`r monthly_threshold_summary$extreme_days_100_plus[monthly_threshold_summary$month_name == "Jan"]`), while January 2021 contained three such days in one month. Under the project's selected thresholds, the matrix therefore shows the strongest concentration around November--January, while still revealing isolated events in other months.
+Across 1983--2025, December recorded `r monthly_threshold_summary$days_50_plus[monthly_threshold_summary$month_name == "Dec"]` days at or above 50 mm, followed closely by January with `r monthly_threshold_summary$days_50_plus[monthly_threshold_summary$month_name == "Jan"]` and November with `r monthly_threshold_summary$days_50_plus[monthly_threshold_summary$month_name == "Nov"]`. January recorded the largest number of days at or above 100 mm (`r monthly_threshold_summary$days_100_plus[monthly_threshold_summary$month_name == "Jan"]`), while January 2021 contained three such days in one month. Under the project's descriptive cut-offs, the strongest seasonal concentration occurs from November through January, although isolated high-rainfall days also occur in other months.
 
-These results describe rainfall observed at the Changi station and should not be interpreted as a national rainfall average or, without additional trend analysis, as evidence that extreme rainfall has increased over time.
+These results describe historical rainfall in Singapore. They should not be interpreted as a direct measure of flooding or drainage performance or, without additional trend analysis, as evidence that high-rainfall days have become more frequent over time.
 
 ------------------------------------------------------------------------
 
 ## 7 References
 
-1.  Chua Chin Hon (2019). "Visualising Singapore’s Changing Weather Patterns: 1983-2019". *Towards Data Science*. [Medium Article](https://medium.com/data-science/visualising-singapores-changing-weather-patterns-1983-2019-a78605fadbdf).
-2.  Historical Daily Weather Records. Meteorological Service Singapore (MSS). [MSS Historical Data](http://www.weather.gov.sg/climate-historical-daily/).
+1.  Chua, Chin Hon. (2019, August 11). "Visualising Singapore's Changing Weather Patterns: 1983--2019." *Towards Data Science*. [Original article](https://medium.com/data-science/visualising-singapores-changing-weather-patterns-1983-2019-a78605fadbdf).
+2.  Meteorological Service Singapore. "Historical Daily Records." [MSS Historical Daily Records](https://www.weather.gov.sg/climate-historical-daily/).
+3.  Meteorological Service Singapore. (2018). *MSS Research Letters, Issue 2*, p. 36. [MSS Research Letters](https://ccrs.weather.gov.sg/wp-content/uploads/2019/02/MRL_Issue_2_Dec2018_FINAL.pdf).
