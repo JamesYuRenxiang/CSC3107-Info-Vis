@@ -60,6 +60,6 @@ As for attribution, the AI was utilised as an advisor to critique and refine the
 
 ## 5. Tool Specification
 
-A single generative AI conversational model (**Gemini 3.1 Pro**) was utilised across all interactions documented in `ai-log.md` for R script generation, logic troubleshooting, and visualisation improvements.
+A single generative AI conversational model (**Gemini 3.1 Pro**) was utilised across all interactions documented in `ai-log-gemini-3.1-pro.md` for R script generation, logic troubleshooting, and visualisation improvements.
 
 Total word count of AI Usage Report: 1,340 words
