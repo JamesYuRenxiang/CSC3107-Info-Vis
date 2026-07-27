@@ -2,7 +2,7 @@
 
 This log documents the AI interactions and prompts used in `team_coral_final_submission.qmd`.
 
-**AI-Tool Used:** Gemini
+**AI-Tool Used:** Gemini 3.1 Pro
 
 ## Interaction 1: Formatting the Critical Analysis for the Storyboard
 
