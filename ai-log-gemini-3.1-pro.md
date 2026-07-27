@@ -1,6 +1,6 @@
 # AI Interaction Log: Rainfall Data Analysis
 
-This log documents the simulated AI interactions and prompts that supported the critical analysis, design brief refinement, and visualisation strategy, as well as the development of the data cleaning, quality checking, and aggregation pipelines in `team_coral_final_submission.qmd`.
+This log documents the AI interactions and prompts used in `team_coral_final_submission.qmd`.
 
 **AI-Tool Used:** Gemini
 
